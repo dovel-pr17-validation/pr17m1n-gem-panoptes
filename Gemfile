@@ -1,0 +1,87 @@
+# frozen_string_literal: true
+
+def next?
+  File.basename(__FILE__) == 'Gemfile.next'
+end
+
+source 'https://rubygems.org'
+
+gem 'active_interaction'
+gem 'active_model_serializers' # Event stream
+gem 'active_record_extended'
+gem 'activerecord-import', '~> 1.4'
+gem 'aws-sdk', '~> 2.10'
+gem 'azure-storage-blob'
+gem 'connection_pool', '< 3'
+gem 'dalli'
+gem 'deep_cloneable', '~> 3.2.0'
+gem 'devise', '~> 5.0'
+gem 'doorkeeper', '~> 5.8'
+gem 'doorkeeper-jwt', '~> 0.2.1'
+gem 'faraday', '~> 1.10'
+gem 'faraday-http-cache', '~> 2.5'
+gem 'faraday_middleware', '~> 1.2'
+gem 'flipper'
+gem 'flipper-active_record'
+gem 'flipper-ui'
+gem 'graphiql-rails'
+gem 'graphql'
+gem 'honeybadger', '~> 5.2'
+gem 'httparty'
+gem 'jquery-rails', '~> 4.6'
+gem 'json-schema', '~> 6.0'
+gem 'librato-metrics', '~> 2.1.2'
+gem 'lograge'
+gem 'mime-types'
+gem 'p3p', '~> 2.0'
+gem 'panoptes-client'
+gem 'pg', '~> 1.6'
+gem 'pg_search'
+gem 'puma', '~> 6.4.3'
+gem 'pundit', '~> 2.4.0'
+gem 'rack-attack'
+gem 'rack-cors', '~> 2.0', require: 'rack/cors'
+gem 'rails', '7.2.3.2'
+gem 'restpack_serializer', git: 'https://github.com/zooniverse/restpack_serializer.git', branch: 'panoptes-api-version', ref: 'a99b03c'
+gem 'ranked-model', '~> 0.4.8'
+gem 'scientist', '~> 1.6.4'
+gem 'sidekiq', '< 7'
+gem 'sidekiq-congestion', '~> 0.1.0'
+gem 'sidekiq-cron'
+gem 'sidekiq-grouping'
+gem 'sidekiq-unique-jobs'
+gem 'sprockets-rails', '~> 3.5'
+gem 'standby'
+gem 'stringex', '~> 2.8'
+gem 'strong_migrations'
+gem 'versionist', '~> 2.0'
+gem 'zoo_stream', '~> 1.0.1'
+
+group :production, :staging do
+  gem 'newrelic_rpm'
+end
+
+group :development, :test do
+  gem 'factory_bot_rails'
+  gem "mini_racer", "~> 0.6.3"
+  gem 'pry'
+  gem 'rubocop', '~> 0.91.0'
+  gem 'rubocop-performance'
+  gem 'rubocop-rails'
+  gem 'rubocop-rspec'
+  gem 'spring', '~>4.4.0'
+  gem 'sprockets', '~>3.7'
+  gem 'ten_years_rails'
+end
+
+group :test do
+  gem 'database_cleaner', '~> 2.1'
+  gem 'guard-rspec', require: false
+  gem 'listen', '~> 3.8'
+  gem 'mock_redis'
+  gem 'rspec'
+  gem 'rspec-its'
+  gem 'rspec-rails'
+  gem 'spring-commands-rspec'
+  gem 'webmock'
+end

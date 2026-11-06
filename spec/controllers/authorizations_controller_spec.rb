@@ -1,0 +1,73 @@
+require 'spec_helper'
+
+shared_examples "restricted scopes" do
+  context 'requesting appropriate scopes' do
+    it 'should return a successful status' do
+      req
+      expect(response.status).to eq(200)
+    end
+  end
+
+  context 'requesting greater scopes' do
+    it 'should return unprocessable entity' do
+      params['scope'] = 'public twentytwo'
+      req
+      expect(response.status).to eq(422)
+    end
+  end
+
+  context 'requesting no scopes' do
+    it 'uses the apps default scopes' do
+      params.delete('scope')
+      allow(app).to receive(:default_scope).and_call_original
+      allow(controller).to receive(:client).and_return(app)
+      req
+      expect(app).to have_received(:default_scope).at_least(1).time
+    end
+  end
+end
+
+describe AuthorizationsController, type: :controller do
+  let(:owner) { create(:user) }
+  let(:params) { { "client_id" => app.uid,
+                   "redirect_uri" => 'urn:ietf:wg:oauth:2.0:oob',
+                   "scope" => "public project classification" } }
+  let(:token_params) { params['response_type'] = 'token'; params }
+  let(:code_params) { params['response_type'] = 'code'; params }
+
+  before(:each) do
+    sign_in owner
+  end
+
+  context "a grant from a first party application" do
+    let!(:app) { create(:first_party_app, owner: owner) }
+
+    it 'should skip authorization and redirect' do
+      get :new, params: token_params
+      expect(response).to redirect_to(/\A#{params[:redirect_uri]}?access_token/)
+    end
+  end
+
+  context 'with an insecure application using an implicit grant' do
+    let!(:app) { create(:application, owner: owner) }
+    let(:req) { get :new, params: token_params }
+
+    it_behaves_like 'restricted scopes'
+  end
+
+  context "an authorization grant by a secure application" do
+    let!(:app) { create(:secure_app, owner: owner) }
+    let(:req) { get :new, params: code_params }
+
+    it_behaves_like 'restricted scopes'
+  end
+
+  context "an authorization grant by an insecure application" do
+    let!(:app) { create(:application, owner: owner) }
+
+    it 'should return 422 unprocessable entity' do
+      get :new, params: code_params
+      expect(response.status).to eq(422)
+    end
+  end
+end

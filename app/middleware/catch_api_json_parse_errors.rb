@@ -1,0 +1,32 @@
+class CatchApiJsonParseErrors
+  def initialize(app)
+    @app = app
+  end
+
+  def call(env)
+    begin
+      @app.call(env)
+    rescue ActionDispatch::Http::Parameters::ParseError => e
+      error_to_pass = Rails.version.start_with?('6') ? e : e.cause
+      return error.respond(error_to_pass) if json_api_call?(env)
+
+      raise e
+    end
+  end
+
+  private
+
+  def error
+    @error ||= ErrorResponse.new(400, error_message)
+  end
+
+  def error_message
+    "There was a problem in the JSON you submitted"
+  end
+
+  def json_api_call?(env)
+    json_content_type = !!env['CONTENT_TYPE'].match(/application\/json/)
+    json_api_request  = !!env['HTTP_ACCEPT'].match(/application\/vnd\.api\+json; version=\d/)
+    json_api_request && json_content_type
+  end
+end

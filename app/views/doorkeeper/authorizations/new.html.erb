@@ -1,0 +1,52 @@
+<header class="page-header" role="banner">
+  <h1>Authorization Required</h1>
+</header>
+
+<main role="main">
+  <p class="h4">
+    <strong class="text-info"><%= @pre_auth.client.name %></strong> wants to use your Zooniverse account.
+  </p>
+
+  <% if @pre_auth.scopes %>
+    <div id="oauth-permissions" style="width: auto;">
+      <p>With your permission, this site/service will be able to:</p>
+
+      <ul style="list-style: none; padding-left: 0;">
+        <% @pre_auth.scopes.each do |scope| %>
+          <li style="margin-bottom: 1rem;">
+            <% if description = Doorkeeper::Panoptes::Scopes.description_for(scope) %>
+              <div><%= description %></div>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form_tag oauth_authorization_path, method: :post do %>
+      <%= hidden_field_tag :client_id, @pre_auth.client.uid %>
+      <%= hidden_field_tag :redirect_uri, @pre_auth.redirect_uri %>
+      <%= hidden_field_tag :state, @pre_auth.state %>
+      <%= hidden_field_tag :response_type, @pre_auth.response_type %>
+      <%= hidden_field_tag :scope, @pre_auth.scope %>
+      <% if @pre_auth.code_challenge %>
+        <%= hidden_field_tag :code_challenge, @pre_auth.code_challenge %>
+        <%= hidden_field_tag :code_challenge_method, @pre_auth.code_challenge_method %>
+      <% end %>
+      <%= submit_tag "Authorize", class: "btn btn-success btn-lg btn-block" %>
+    <% end %>
+    <%= form_tag oauth_authorization_path, method: :delete do %>
+      <%= hidden_field_tag :client_id, @pre_auth.client.uid %>
+      <%= hidden_field_tag :redirect_uri, @pre_auth.redirect_uri %>
+      <%= hidden_field_tag :state, @pre_auth.state %>
+      <%= hidden_field_tag :response_type, @pre_auth.response_type %>
+      <%= hidden_field_tag :scope, @pre_auth.scope %>
+      <% if @pre_auth.code_challenge %>
+        <%= hidden_field_tag :code_challenge, @pre_auth.code_challenge %>
+        <%= hidden_field_tag :code_challenge_method, @pre_auth.code_challenge_method %>
+      <% end %>
+      <%= submit_tag "Deny", class: "btn btn-danger btn-lg btn-block" %>
+    <% end %>
+  </div>
+</main>

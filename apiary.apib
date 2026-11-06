@@ -1,0 +1,4765 @@
+FORMAT: 1A
+HOST: https://panoptes-staging.zooniverse.org/api
+
+# Panoptes API
+Panoptes API is a *crowdsourcing system* based on serving _subjects_,
+images or other media, to _volunteers_ and asking them to _classify_
+the _subject_ based on a defined _workflow_ for the _subject_ type.
+
+# Naming Conventions
+
+Resources attributes related to human readable names for resources
+follow a common convention.
+
++ name - the url_escaped, downcased, and underscored unique identifier that can be used to construct client URLs
++ display_name - a non-unique identifier that can contain any character. Used to quickly describe a resource.
++ title - a non-unique identifier that can contain any character. Maybe translated if a client requests a representation of a resource in another language
+
+# Authentication
+Panoptes API provides an OAuth 2.0 authentication mechanism. (TODO:
+Describe Authentication Workflow).
+
+# Headers
+Panoptes API sometime requires specific headers to be sent as part of requests.
+
+All requests should set `Accept: application/vnd.api+json; version=1`. You will receive a `404 Not Found` without it.
+
+All PUT and POST requests should set `Content-Type: application/vnd.api+json; version=1` or `Content-Type: application/json`. You will receive a `415 Unsupported Media Type` without one of those two headers.
+
+All PUT and DELETE requests should set the `If-Match` header to the value of the `ETag` header of the request where the resource was originally retrieved. You will receive a `428 Precondition Required` without the header and a `412 Precondition Failed` if the etags do not match.
+
+# Group Panoptes API Root [/]
+Panoptes API entry point.
+
+This resource does not have attributes instead it lists links to the
+available resources.
+
+## Retrieve Entry Point [GET]
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    + Body
+
+            {
+                "links": {
+                    "subjects": "/subjects",
+                    "users": "/users",
+                    "projects": "/projects",
+                    "workflows": "/workflows",
+                    "subject_sets": "/subject_sets",
+                    "groups": "/user_groups",
+                    "classifications": "/classifications",
+                    "memberships": "/memberships",
+                    "collections": "/collections",
+                    "project_roles": "/project_roles",
+                    "project_preferences": "/project_preferences",
+                }
+            }
+
+# Group User
+Resources related to _Panotpes Users_.
+
+## User [/users/{id}]
+A single User object. A User is representation of the identity and
+contributions of a volunteer.
+
+The User resource has the following attributes:
+
+- id
+- created_at
+- updated_at
+- credited_name
+- login
+- display_name
+- email
+- zooniverse_id
+- classifications_count
+- languages
+
+*id*, *zooniverse_id*, *created_at*, *updated_at*, and
+ *classification_count* are created and updated by the Panoptes API. `credited_name` is the publicly available name with which a volunteer will be credited on papers, posters, etc. When serialized, if an `@` character is found, the user's login will be returned instead for privacy reasons.
+
++ Parameters
+    + id (integer) ... ID of the User as an integer key
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "users.projects": {
+                        "href": "/projects?owner={users.owner_name}",
+                        "type": "projects"
+                    },
+                    "users.user_groups": {
+                        "href": "/user_groups?user_id={users.id}",
+                        "type": "user_groups"
+                    },
+                    "users.subjects": {
+                        "href": "/subjects?user_id={users.id}",
+                        "type": "subjects"
+                    },
+                    "users.collections": {
+                        "href": "/collections?owner={users.owner_name}",
+                        "type": "collections"
+                    }
+                },
+                "users": [{
+                    "id": 1,
+                    "created_at": "2014-03-20T00:15:47Z",
+                    "updated_at": "2013-09-30T10:20:32Z",
+                    "credited_name": "Dr. Stuart Lynn",
+                    "login": "stuart",
+                    "display_name": "Stuart",
+                    "owner_name": "stuart",
+                    "email": "stuart@zoooniverse.org",
+                    "zooniverse_id": "123432",
+                    "classifications_count": "104",
+                    "languages": ["en-gb", "es-mx"]
+                }]
+            }
+
+### Retrieve a single User [GET]
+The *email* attribute is only available if the requesting user is an
+administrator or the user resource being requested is that of the
+requesting user.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [User][]
+
+### Edit a single User [PUT]
+The currently logged in User may edit their record by sending a
+partial representation of the resource including their changes. A User
+cannot edit linked resources.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "users": {
+                    "credited_name": "Dr. Stuart Lynn, DDS"
+                }
+            }
+
++ Response 200
+
+    [User][]
+
+### Destroy a single User [DELETE]
+The current logged in User may delete themself. This does not fully
+remove the user resource; instead, it deactivates their projects
+and removes personally identifying information including the
+*credited_name* and *email* address.
+
++ Response 204
+
+## Users Collection [/users{?page,page_size,sort,include}]
+Collection of all Users
+
+All collections add a *meta* attribute hash containing
+paging information.
+
+User resources are included a an array under the _users_ key
+
++ Model
+
+    JSON-API formatted respresentation of the Users collection
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "links": {
+                    "users.projects": {
+                        "href": "/projects?owner={users.owner_name}",
+                        "type": "projects"
+                    },
+                    "users.user_groups": {
+                        "href": "/user_groups?user_id={users.id}",
+                        "type": "user_groups"
+                    },
+                    "users.subjects": {
+                        "href": "/subjects?user_id={users.id}",
+                        "type": "subjects"
+                    },
+                    "users.collections": {
+                        "href": "/collections?owner={users.owner_name}",
+                        "type": "collections"
+                    }
+                },
+                "meta": {
+                    "users": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/users?page_size=2",
+                        "previous_href": "/users?page=14page_size=2",
+                        "next_href": "/users?page=2&page_size=2",
+                        "last_href": "/users?page=14&page_size=2"
+                    }
+                },
+                "users": [{
+                    "id": 1,
+                    "created_at": "2014-03-20T00:15:47Z",
+                    "updated_at": "2013-09-30T10:20:32Z",
+                    "created_name": "Dr. Stuart Lynn",
+                    "login": "stuart",
+                    "display_name": "Stuart",
+                    "email": "stuart@zoooniverse.org",
+                    "zooniverse_id": "123432",
+                    "classifications_count": "104",
+                    "languages": ["en-gb", "es-mx"],
+                },
+                {
+                    "id": 2,
+                    "created_at": "2014-03-20T00:15:47Z",
+                    "updated_at": "2013-09-30T10:20:32Z",
+                    "created_name": "Dr. Stuart Lynn",
+                    "login": "stuart",
+                    "display_name": "Stuart",
+                    "email": "stuart@zoooniverse.org",
+                    "zooniverse_id": "123432",
+                    "classifications_count": "104",
+                    "languages": ["en-gb", "es-mx"],
+                }]
+            }
+
+### List all Users [GET]
++ Parameters
+    + page (optional, integer) ... index of the collection page, 1 is default
+    + page_size (optional, integer) ... number of items on a page. 20 is default
+    + sort (optional, string) ... fields to sort collection by. id is default
+    + include (optional, string) ... comma separated list of linked resources to include
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Users Collection][]
+
+# Group Classification
+Resources related to _Pantopes Classifications_.
+
+## Classification [/classification/{id}]
+A single Classification resource object. This represents a _user's_
+responses to a _worflow's_ questions about a _subject_.
+
+A classifications has the following attributes:
+
+- id
+- created_at
+- updated_at
+- completed
+- metadata
+- gold_standard
+- annotations
+
+Annotations is an array of maps of the form `{ "task": "task_key",
+"value": "question answer" }`. Metadata contains additional information about a
+classification including:
+
+- started_at
+- finished_at
+- user_agent
+- workflow_version
+- user_language
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "classifications.user": {
+                        "href": "/users/{classifications.user}",
+                        "type": "classifications"
+                    },
+                    "classifications.project": {
+                        "href": "/projects/{classifications.project}",
+                        "type": "projects"
+                    },
+                    "classifications.workflow": {
+                        "href": "/workflows/{classification.workflow}",
+                        "type": "workflows"
+                    },
+                    "classifications.subject": {
+                        "href": "/subjects/{classifications.subjects}",
+                        "type": "subjects"
+                    }
+                },
+                "classifications": [{
+                    "id": 1001,
+                    "created_at": "2014-08-24T22:24:32Z",
+                    "updated_at": "2014-08-24T22:24:32Z",
+                    "completed": false,
+                    "metadata": {
+                        "started_at": "2014-08-24T22:20:21Z",
+                        "finished_at": "2014-08-24T22:24:31Z",
+                        "user_agent": "cURL",
+                        "user_language": "es_MX",
+                        "workflow_version": "11.12"
+                    },
+                    "annotations": [
+                        {
+                            "task": "task-1",
+                            "value": [10.4, 12.4, 13.2]
+                        }
+                    ],
+                    "links": {
+                        "user": "1",
+                        "subjects": ["10"],
+                        "workflow": "81",
+                        "project": "2"
+                    }
+                }]
+            }
+
+### Retrieve a single Classification [GET]
+A User may retrieve any classification, irrespective of the complete status.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Classification][]
+
+### Edit a single Classification [PUT]
+A User may modify an incomplete classification. It should be marked as
+completed when done.
+
+The *annotations* attributes must be returned as a full representation
+of the annotations array.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "classifications": {
+                    "annotations": [
+                        {
+                            "task": "task-1",
+                            "value": [10.4, 12.4, 13.2]
+                        },
+                        {
+                            "task": "workflow-2",
+                            "value": "fishy"
+                        }
+                    ],
+                    "completed": true
+                }
+            }
+
++ Response 200
+
+    [Classification][]
+
+### Destroy a single Classification [DELETE]
+A User may delete an incomplete classification.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Classification Collection [/classifications{?page,page_size,sort,project_id,user_group_id,include,for}]
+A representation of all the Classifications in a collection
+
+All collections add a *meta* attribute hash containing paging information.
+
+Please note that due to the cost of the page count queries on the
+classifications table we are not returning the page counts for
+this end point, please use the previous and next hrefs to page into the data.
+
+Classifications are returned as an array under the _classifications_
+key.
+
++ Model
+
+    A JSON API formatted respresentation of a collection of
+    classification resources
+
+    + Body
+
+            {
+                "links": {
+                    "classifications.user": {
+                        "href": "/users/{classifications.user}",
+                        "type": "classifications"
+                    },
+                    "classifications.project": {
+                        "href": "/projects/{classifications.project}",
+                        "type": "projects"
+                    },
+                    "classifications.workflow": {
+                        "href": "/workflows/{classification.workflow}",
+                        "type": "workflows"
+                    },
+                    "classifications.subject": {
+                        "href": "/subjects/{classifications.subjects}",
+                        "type": "subjects"
+                    }
+                },
+                "meta": {
+                    "classifications": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/classifications?page_size=2",
+                        "previous_href": "/classifications?page=14page_size=2",
+                        "next_href": "/classifications?page=2&page_size=2",
+                        "last_href": "/classifications?page=14&page_size=2"
+                    }
+                },
+                "classifications": [{
+                    "id": 1001,
+                    "created_at": "2014-08-24T22:24:32Z",
+                    "updated_at": "2014-08-24T22:24:32Z",
+                    "completed": false,
+                    "metadata": {
+                        "started_at": "2014-08-24T22:20:21Z",
+                        "finished_at": "2014-08-24T22:24:31Z",
+                        "user_agent": "cURL",
+                        "user_language": "es_MX",
+                        "workflow_version": "11.12"
+                    },
+                    "annotations": [
+                        {
+                            "task": "task-1",
+                            "value": [10.4, 12.4, 13.2]
+                        }
+                        ],
+                    "links": {
+                        "user": "1",
+                        "subjects": ["10"],
+                        "workflow": "81",
+                        "project": "2"
+                    }
+                },
+                {
+                   "id": 1002,
+                    "created_at": "2014-08-24T22:25:32Z",
+                    "updated_at": "2014-08-24T22:28:32Z",
+                    "completed": true,
+                    "metadata": {
+                        "started_at": "2014-08-24T22:24:21Z",
+                        "finished_at": "2014-08-24T22:28:31Z",
+                        "user_agent": "cURL",
+                        "user_language": "es_MX",
+                        "workflow_version": "11.12"
+                    },
+                    "annotations": [
+                        {
+                            "task": "task-1",
+                            "value": [10.4, 12.4, 13.2]
+                        },
+                        {
+                            "task": "task-2",
+                            "value": "workflow-2": "starry"
+                        }
+                    ],
+                    "links": {
+                        "user": "1",
+                        "subjects": ["11"],
+                        "workflow": "81",
+                        "project": "2"
+                    }
+                }]
+
+            }
+
+### List all classifications [GET]
+Only lists classifications the active user has made or projects the user has edit permissions for.
+
+Classifications have special collection routes that indicate the scope you would like to retrieve.
+
+Possible options are:
+
++ '/' default, will fetch the current user's past complete classifications.
++ '/incomplete' will fetch the current user's past incomplete classifications.
++ '/project' will fetch classifications from projects a user has 'edit' permissions for
++ '/gold_standard' will fetch gold standard classifications for all marked workflows
+
+
+Any of the scopes may be further filtered using the *project_id*, *workflow_id*
+and *user_group_id* parameters.
++ Parameters
+    + page (optional, integer) ... index of the collection page, 1 is default
+    + page_size (optional, integer) ... number of items on a page. 20 is default
+    + sort (optional, string) ... fields to sort collection by. updated_at is default
+    + project_id (optional, integer) ... only retrieve classifications for a specific project
+    + user_group_id (optional, integer) ... only retrieve classifications for a specific user group
+    + include (optional, string) ... comma separated list of linked resources to return with the collection
+    + last_id (optional, integer) ... only classifications with ids greater than `last_id` will be returned
+                                      (`/project` only, requires project_id)
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Classification Collection][]
+
+### Create a Classification [POST]
+Create a classification by providing a JSON-API formatted object, that
+must include _metadata_, _annotations_ and a _links_ hash. Optionally, it
+may include the _completed_ field, which if not included defaults to true.
+The completed field is used to store half-completed classifications, so the user
+can later continue from where they stopped.
+
+The _links_ hash must contain a _subjects_ hash, a _project_ and a _workflow_.
+The _metadata_ hash must contain all the keys specified in the example.
+Please note, the _workflow_version_ should be the value returned from the
+specific workflow representation. The annotations array must be in the
+format specified in the example, i.e. an array of objects, containing a _task_ and a _value_.
+The _task_ can be anything and must not necessarily align with the tasks of the workflow
+(even though that is generally not advised).
+
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "classifications": {
+                    "completed": false,
+                    "metadata": {
+                        "started_at": "2014-08-24T22:20:21Z",
+                        "finished_at": "2014-08-24T22:24:31Z",
+                        "user_agent": "cURL",
+                        "user_language": "es_MX",
+                        "workflow_version": "11.12"
+                    },
+                    "annotations": [
+                        { "task": "task-name",
+                          "value": "Any type: string, hash, array, etc" }
+                    ],
+                    "links": {
+                        "subjects": ["11"],
+                        "workflow": "81",
+                        "project": "2"
+                    }
+                }
+            }
+
++ Response 201
+
+    [Classification][]
+
+# Group Subjects
+Resources related to _Panoptes Subjects_.
+
+## Subject [/subjects/{id}{?include}]
+A single Subject object. A Subject is a resource that describe a
+piece of media to be classified including metadata about the object.
+
+- id
+- zooniverse_id
+- created_at
+- updated_at
+- locations
+- metadata
+
+*id*, *zooniverse_id*, *created_at*, and *updated_at* are assigned by
+the API.
+
++ Parameters
+  + id (required, integer) ... integer id of the subject resource
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "subjects.project": {
+                        "href": "/projects/subjects.project",
+                        "type": "projects"
+                    },
+                    "subjects.subject_sets": {
+                        "href": "/subject_sets/subjects.subject_sets",
+                        "type": "subject_sets"
+                    }
+                },
+                "subjects": [{
+                    "id": "1",
+                    "zooniverse_id": "AGFS0001231",
+                    "created_at": "2014-03-24T10:42:21Z",
+                    "updated_at": "2014-03-24T10:42:21Z",
+                    "locations": [
+                        {"image/jpeg": "http://s3.amazonaws.com/subjects/1.png"}
+                    ],
+                    "metadata": {
+                        "lens_type": "50mm"
+                    },
+                    "links": {
+                        "project": "1",
+                        "subject_sets": ["1"]
+                    }
+                }]
+            }
+
+### Retrieve a single Subject [GET]
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Subject][]
+
+### Edit a single Subject [PUT]
+Users are permitted to edit subjects belonging to projects a user
+has edit permissions for. A user may not change the project of a
+subject.
+
+The *locations* array should have the mime-types of the subject's
+associated media. The response will contain signed s3 urls the client
+may make a PUT request containing the media to. The signed urls will
+be valid for 20 minutes.
+
+A request chagning the *metadata* hash must contain a full
+representation of the attribute.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "subjects": {
+                    "locations": [
+                        "image/png"
+                    ]
+                }
+            }
+
++ Response 200
+
+    [Subject][]
+
+### Destroy a single subject [DELETE]
+Users are permitted to destroy a subjects they own or
+subjects belongs to a project a user has destroy permissions for.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Subject Collection [/subjects{?page,page_size,sort,workflow_id,subject_set_id}]
+Represents a collection of subjects.
+
+All collections add a *meta* attribute hash containing paging information.
+
+Subjects are returned as an array under the _subject_ key.
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "subjects.project": {
+                        "href": "/projects/subjects.project",
+                        "type": "projects"
+                    },
+                    "subjects.subject_sets": {
+                        "href": "/subject_sets/subjects.subject_sets",
+                        "type": "subject_sets"
+                    }
+                },
+                "meta": {
+                    "subjects": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/subjects?page_size=2",
+                        "previous_href": "/subjects?page=14page_size=2",
+                        "next_href": "/subjects?page=2&page_size=2",
+                        "last_href": "/subjects?page=14&page_size=2"
+                    }
+                },
+                "subjects": [{
+                    "id": "1",
+                    "zooniverse_id": "AGFS0001231",
+                    "created_at": "2014-03-24T10:42:21Z",
+                    "updated_at": "2014-03-24T10:42:21Z",
+                    "locations": [
+                        {"image/jpeg": "http://s3.amazonaws.com/subjects/1.png"}
+                    ],
+                    "metadata": {
+                        "lens_type": "50mm"
+                    },
+                    "links": {
+                        "project": "1"
+                        "subject_sets": ["1"]
+                    }
+                },{
+                    "id": "2",
+                    "zooniverse_id": "AGFS0001232",
+                    "created_at": "2014-03-24T10:44:21Z",
+                    "updated_at": "2014-03-24T10:44:21Z",
+                    "locations": [
+                        {"image/jpeg": "http://s3.amazonaws.com/subjects/2.png"}
+                    ],
+                    "metadata": {
+                        "lens_type": "50mm"
+                    },
+                    "links": {
+                        "project": "1"
+                        "subject_sets": ["1"]
+                    }
+                }]
+            }
+
+### Retrieve a List of Subjects [GET]
+
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + sort (optional, string) ... field to sort by
+  + workflow_id (optional, integer) ... filter to subjects belonging to a specific workflow
+  + subject_set_id (optional, integer) ... return subjects belonging to the identified subject_set
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Subject Collection][]
+
+### Retrieve subjects to classify [GET /api/v1/subjects/queued]
+
+While the normal GET on the subjects resource will return a list of subjects in a project, there is a special API for getting some subjects that need classifications: `GET /api/v1/subjects/queued`. This special API is optimized specifically for serving a selection of subjects that should be shown to the user in the classify interface.
+
++ Parameters
+  + workflow_id (required, integer) ... filter to subjects belonging to a specific workflow
+  + subject_set_id (optional, integer) ... return subjects belonging to the identified subject_set, it is required when the workflow is grouped.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Subject Collection][]
+
+### Create a Subject [POST]
+A *locations* attribute and a project link are required.
+
+To have the Zooniverse host your media resources the *locations* array
+should have the mime-types of the subject's associated media,
+e.g `"locations":["image/png", "image/jpeg", "image/png"]`,
+note the locations mime types are stored in order.
+
+The create response will contain signed s3 urls the client may make a PUT
+request containing the media to. The signed urls will be valid for 20 minutes.
+Please take the order of the returned s3 urls into account when PUT'ing
+local media resources to the remote location.
+
+To use your own hosted media resources the *locations* array
+should be comprised of objects that represent the mime-type and the hosted URL
+of the subject's associated media,
+e.g. `"locations":[
+{"image/png": "https://your.s3_account.com/subjects/1.png"},
+{"image/jpeg": "https://your.s3_account.com/subjects/1.jpg"}
+]`.
+
+The *metadata* attribute is optional.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "subjects": {
+                    "locations": [
+                        "image/png",
+                        [
+                            "video/webm",
+                            "video/mp4"
+                        ]
+                    ],
+                    "metadata": {
+                        "lens_type": "50mm"
+                    },
+                    "links": {
+                        "project": "1"
+                    }
+                }
+            }
+
++ Response 201
+
+    [Subject][]
+
+# Group Projects
+Resources related to _Panoptes Projects_.
+
+## Project [/projects/{id}{?include,display_name,approved,beta,live}]
+A Project is a collection of subjects and task workflows that a
+volunteer performs on subjects. The project also holds supplementary
+text describing the tasks volunteers perform. A project can be linked to
+multiple organizations.
+
+It has the following attributes:
+
+- id
+- display_name
+- classifications_count
+- subjects_count
+- created_at
+- updated_at
+- available_languages
+- title
+- description
+- introduction
+- avatar
+- private
+- retired_subjects_count
+- configuration
+- beta
+- approved
+- live
+
+*id*, *created_at*, *updated_at*, *user_count*, and
+*classifications_count* are set by the API.
+
++ Parameters
+  + id (required, integer) ... integer id of the resource to retrieve
+  + display_name (string) ... project name filter
+  + approved (boolean) ... approved state filter
+  + beta (boolean) ... beta state filter
+  + live (boolean) ... live state filter
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "projects.subjects": {
+                        "href": "/subjects?project_id={projects.id}",
+                        "type": "subjects"
+                    },
+                    "projects.classifications": {
+                        "href": "/classifications?project_id={projects.id}",
+                        "type": "classifications"
+                    },
+                    "projects.workflows": {
+                        "href": "/workflows?project_id={projects.id}",
+                        "type": "workflows"
+                    },
+                    "projects.subject_sets": {
+                        "href": "/subject_sets/{projects.subject_sets}",
+                        "type": "subject_sets"
+                    },
+                    "projects.owner": {
+                        "href": "/{projects.owner.href}",
+                        "type": "owners"
+                    },
+                    "projects.organizations": {
+                        "href": "/organizations/{projects.organizations}",
+                        "type": "organizations"
+                    }
+                },
+                "projects": [{
+                    "id": "1",
+                    "display_name": "Galaxy Zoo",
+                    "classifications_count": "1000000",
+                    "subjects_count": "10000",
+                    "created_at": "2014-03-24T10:42:21Z",
+                    "updated_at": "2014-03-24T10:42:21Z",
+                    "available_languages": ["en"],
+                    "title": "Galaxy Zoo",
+                    "description": "A Project ...",
+                    "introduction": "asdfasdf",
+                    "private": false,
+                    "retired_subjects_count": "5000",
+                    "configuration": { "option_1": "value" },
+                    "beta": "false",
+                    "approved": "true",
+                    "live": "true",
+                    "links": {
+                        "owner": {
+                            "id": "2",
+                            "display_name": "Owner 2",
+                            "href": "/users/2",
+                            "type": "user"
+                        }
+                    }
+                }]
+            }
+
+### Retrieve a single Project [GET]
++ Parameters
+  + include (optional, string) ... comma separated list of linked resources to include in the response
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Project][]
+
+### Edit a single Project [PUT]
+A User must be the owner of a project or have update
+permissions to edit the resource. Workflow and Subject Set links may be
+edited. Removing a subject set or workflow causes the subject set or
+workflow to be destroyed. Adding a workflow or subject set causes
+the original to be copied and a new id to be returned.
+
+Setting has may links through a PUT, while supported, is not
+recommended. Instead, use the link endpoints explained below.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "projects": {
+                    "display_name": "Galaxy Zooooooooo!",
+                    "links": {
+                        "workflows": ["1"],
+                        "subject_sets": ["10"]
+                    }
+                }
+            }
+
++ Response 200
+
+    [Project][]
+
+### Destroy a single Project [DELETE]
+A user may destroy a project they own or have destroy permissions for.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Project Create Links [/project/{id}/links/{link_type}]
+The recommended way to edit a project's subject set and workflow
+links.
+
+### Add a Link [POST]
+The body key must match the link_type parameter. Workflows and Subject Sets
+added in this way will be copied and their id will be returned as part
+of the complete Project representation response.
+
++ Parameters
+  + id (required, integer) - the id of the project to add
+  + link_type (required, string)
+    the name of the link to edit
+        + Members
+            + `workflows`
+            + `subject_sets`
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "subject_sets": ["1", "2"]
+            }
+
++ Response 200
+
+    [Project][]
+
+## Project Destroy Links [/project/{id}/links/{link_type}/{link_ids}]
+The recommended way to destroy project links.
+
+### Destroy a Link [DELETE]
+Will destroy the comma separated list of link ids for the given link
+type. For Projects, only workflow and subject_set links can be
+destroyed in this manner. The linked object will be destroyed with
+this action.
+
++ Parameters
+  + id (required, integer) ... the id of the project to modify
+  + link_type (required, string)
+    the name of the link to edit
+        + Members
+            + `workflows`
+            + `subject_sets`
+  + link_ids (required, string) ... comma separated list of ids to destroy
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Project Collection [/projects{?page,page_size,sort,owner,organization_id,include}]
+A collection of _Panotpes Project_ resources.
+
+All collections add a *meta* attribute hash containing
+paging information.
+
+Projects are returned as an array under the _projects_ key.
+
++ Model
+
+    A JSON API formatted representation of a collection of Projects.
+
+    + Body
+
+            {
+                "links": {
+                    "projects.subjects": {
+                        "href": "/subjects{?project_id=projects.id},
+                        "type": "subjects"
+                    },
+                    "projects.classifications": {
+                        "href": "/classifications{?project_id=projects.id}",
+                        "type": "classifications"
+                    },
+                    "projects.workflows": {
+                        "href": "/workflows/{projects.workflows}",
+                        "type": "workflows"
+                    },
+                    "projects.subject_sets": {
+                        "href": "/subject_sets/{projects.subject_sets}",
+                        "type": "subject_sets"
+                    },
+                    "projects.owner": {
+                        "href": "/{projects.owner.href}",
+                        "type": "owners"
+                    },
+                    "projects.organizations": {
+                        "href": "/organizations/{projects.organizations}",
+                        "type": "organizations"
+                    }
+                },
+                "meta": {
+                   "projects": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/projects?page_size=2",
+                        "previous_href": "/projects?page=14page_size=2",
+                        "next_href": "/projects?page=2&page_size=2",
+                        "last_href": "/projects?page=14&page_size=2"
+                    }
+                },
+                "projects": [{
+                    "id": "1",
+                    "created_at": "2014-03-24T10:42:21Z",
+                    "updated_at": "2014-03-24T10:42:21Z",
+                    "name": "galaxy_zoo",
+                    "display_name": "Galaxy Zoo",
+                    "primary_language": "en",
+                    "user_count": "10000",
+                    "classifications_count": "1000000",
+                    "activated_state": 0,
+                    "title": "Galaxy Zoo",
+                    "description": "A Project ...",
+                    "introduction": "asdfasdf",
+                    "science_case": "88mph + 1.21 GW = 1955",
+                    "team_members": [{
+                        "name": "Doc Brown",
+                        "bio": "",
+                        "twitter": "thatsmydelorean",
+                        "insitution": nil
+                    }],
+                    "guide": [{
+                        "image": "http://something.example.com/delorean.jpg",
+                        "explanation": "our ride"
+                    }],
+                    "links": {
+                        "owner": {
+                            "id": "2",
+                            "display_name": "Owner 2",
+                            "href": "/users/2",
+                            "type": "users"
+                        }
+                    }
+                },{
+                    "id": "2",
+                    "created_at": "2014-03-24T10:42:21Z",
+                    "updated_at": "2014-03-24T10:42:21Z",
+                    "name": "galaxy_zoo_2",
+                    "display_name": "Galaxy Zoo 2",
+                    "primary_language": "en",
+                    "user_count": "10000",
+                    "classifications_count": "1000000",
+                    "activated_state": 0,
+                    "title": "Galaxy Zoo",
+                    "description": "A Project ...",
+                    "introduction": "asdfasdf",
+                    "science_case": "88mph + 1.21 GW = 1955",
+                    "team_members": [{
+                        "name": "Doc Brown",
+                        "bio": "",
+                        "twitter": "thatsmydelorean",
+                        "insitution": nil
+                    }],
+                    "guide": [{
+                        "image": "http://something.example.com/delorean.jpg",
+                        "explanation": "our ride"
+                    }],
+                    "links": {
+                        "owner": {
+                            "id": "2",
+                            "display_name": "Owner 2",
+                            "href": "/users/2",
+                            "type": "users"
+                        }
+                    }
+                }]
+            }
+
+### List All Projects [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + sort (optional, string) ... field to sort by
+  + owner (optional, string) ... string owner name of either a user or a user group to filter by.
+  + organization_id (optional, integer or comma-separated integers) ... return projects linked to one or more organizations.
+  + include (optional, string) ... comma separated list of linked resources to include in the response
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Project Collection][]
+
+
+### Create a Project [POST]
+Requires at least a *display_name*, *description*, *primary_language* and *private*. Workflows
+and Subject sets added as links will be copied and their new ids
+returned.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "projects": {
+                    "name": "galaxy_zoo",
+                    "description": "A doubleplus good project",
+                    "primary_language": "en-us",
+                    "private": true,
+                    "links": {
+                        "workflows": ["1", "2"]
+                        "owner": {
+                            "id": 10,
+                            "display_name": "Owner 2",
+                            "type": "user_groups",
+                            "href": "user_groups/10"
+                        }
+                    }
+                }
+            }
+
++ Response 201
+
+    [Project][]
+
+# Group Organizations
+Resources related to _Panoptes Organizations_.
+
+## Organization [/organizations/{id}{?include,display_name}]
+An Organization is a collection of projects that are related by dicipline or
+research group. Projects can be linked to multiple organizations.
+
+It has the following attributes:
+
+Organization(id: integer, display_name: string, slug: string, primary_language: string, listed_at: datetime, activated_state: integer, created_at: datetime, updated_at: datetime, urls: jsonb, listed: boolean, categories: string)
+
+- id
+- created_at
+- updated_at
+- display_name
+- title
+- description
+- introduction
+- urls
+- available_languages
+- listed
+- avatar
+- background
+
++ Parameters
+  + id (required, integer) ... integer id of the resource to retrieve
+  + display_name (string) ... name filter
+  + listed (boolean) ... publicly visible
+
++ Model
+
+    + Body
+
+            {
+              "organizations": [
+                {
+                  "id": "99",
+                  "display_name": "United Federation of Projects",
+                  "description": "Surveying planets and nebulae, mostly",
+                  "introduction": "",
+                  "title": "United Federation of Projects",
+                  "href": "/organizations/18",
+                  "primary_language": "en",
+                  "listed_at": null,
+                  "listed": false,
+                  "slug": "user/slug",
+                  "urls": [],
+                  "categories": [],
+                  "announcement": "",
+                  "links": {
+                    "organization_roles": [
+                      "153808"
+                    ],
+                    "owner": {
+                      "id": "9999",
+                      "display_name": "Jean-Luc Picard",
+                      "type": "users",
+                      "href": "/users/9999"
+                    },
+                    "avatar": {
+                      "href": "/organizations/99/avatar",
+                      "type": "avatars"
+                    },
+                    "background": {
+                      "href": "/organizations/99/background",
+                      "type": "backgrounds"
+                    },
+                    "attached_images": {
+                      "href": "/organizations/99/attached_images",
+                      "type": "attached_images"
+                    }
+                  }
+                }
+              ],
+              "links": {
+                "organizations.attached_images": {
+                  "href": "/organizations/{organizations.id}/attached_images",
+                  "type": "media"
+                },
+                "organizations.organization_roles": {
+                  "href": "/organization_roles?organization_id={organizations.id}",
+                  "type": "organization_roles"
+                },
+                "organizations.projects": {
+                  "href": "/projects?organization_id={organizations.id}",
+                  "type": "projects"
+                },
+                "organizations.pages": {
+                  "href": "/organizations/{organizations.id}/pages",
+                  "type": "organization_pages"
+                },
+                "organizations.owner": {
+                  "href": "/{organizations.owner.href}",
+                  "type": "owners"
+                },
+                "organizations.avatar": {
+                  "href": "/organizations/{organizations.id}/avatar",
+                  "type": "media"
+                },
+                "organizations.background": {
+                  "href": "/organizations/{organizations.id}/background",
+                  "type": "media"
+                }
+              },
+              "meta": {
+                "organizations": {
+                  "page": 1,
+                  "page_size": 20,
+                  "count": 1,
+                  "include": [],
+                  "page_count": 1,
+                  "previous_page": null,
+                  "next_page": null,
+                  "first_href": "/organizations?id=18",
+                  "previous_href": null,
+                  "next_href": null,
+                  "last_href": "/organizations?id=18"
+                }
+              }
+            }
+
+### Retrieve a single Organization [GET]
++ Parameters
+  + include (optional, string) ... comma separated list of linked resources to include in the response
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Organization][]
+
+### Edit a single Organization[PUT]
+A User must be the owner of a Organization or have update
+permissions to edit the resource.
+
+Setting has may links through a PUT, while supported, is not
+recommended. Instead, use the link endpoints explained below.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "organizations": {
+                    "display_name": "Klingon Empire",
+                    "links": {
+                        "workflows": ["1"],
+                        "subject_sets": ["10"]
+                    }
+                }
+            }
+
++ Response 200
+
+    [Organization][]
+
+### Destroy a single Organization [DELETE]
+A user may destroy a Organization they own or have destroy permissions for.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Organization Create Links [/Organization/{id}/links/{link_type}]
+
+### Add a Link [POST]
+The body key must match the link_type parameter. Use this endpoint to link one
+or more projects to an organization. A project may be linked to multiple
+organizations.
+
++ Parameters
+  + id (required, integer) - the id of the project to add
+  + link_type (required, string)
+    the name of the link to edit
+        + Members
+            + `projects`
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "projects": ["1", "2"]
+            }
+
++ Response 200
+
+    [Organization][]
+
+## Organization Destroy Links [/Organization/{id}/links/{link_type}/{link_ids}]
+The recommended way to destroy Organization links.
+
+### Destroy a Link [DELETE]
+Will destroy the comma separated list of link ids for the given link
+type. For Organization, only project links can be
+destroyed in this manner. The linked object will be destroyed with
+this action.
+
++ Parameters
+  + id (required, integer) ... the id of the project to modify
+  + link_type (required, string)
+    the name of the link to edit
+        + Members
+            + `projects`
+  + link_ids (required, string) ... comma separated list of ids to destroy
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Organization Collection [/projects{?page,page_size,sort,owner,include}]
+A collection of _Panotpes Organization_ resources.
+
+All collections add a *meta* attribute hash containing
+paging information.
+
+Organizations are returned as an array under the _projects_ key.
+
++ Model
+
+    A JSON API formatted representation of a collection of Organizations.
+
+    + Body
+
+            {
+              "organizations": [
+                {
+                  "id": "5",
+                  "display_name": "United Federation of Projects",
+                  "description": "Every project in the galaxy",
+                  "introduction": "Hello and welcome to the UFP",
+                  "title": "United Federation of Projects",
+                  "href": "/organizations/5",
+                  "primary_language": "en",
+                  "listed_at": null,
+                  "listed": true,
+                  "slug": "user/slug",
+                  "urls": [
+                    {
+                      "url": "https://twitter.com/UFP",
+                      "path": "United Federation of Twitter",
+                      "site": "twitter.com/",
+                      "label": ""
+                    }
+                  ],
+                  "categories": [],
+                  "announcement": "Oh Gosh!",
+                  "links": {
+                    "organization_roles": [
+                      "9999"
+                    ],
+                    "projects": [
+                      "1",
+                      "2"
+                    ],
+                    "owner": {
+                      "id": "811067",
+                      "display_name": "meredithspalmer",
+                      "type": "users",
+                      "href": "/users/811067"
+                    },
+                    "pages": [
+                      "5"
+                    ],
+                    "avatar": {
+                      "href": "/organizations/5/avatar",
+                      "type": "avatars",
+                      "id": "27687087"
+                    },
+                    "background": {
+                      "href": "/organizations/5/background",
+                      "type": "backgrounds",
+                      "id": "30335947"
+                    },
+                    "attached_images": {
+                      "href": "/organizations/5/attached_images",
+                      "type": "attached_images"
+                    }
+                  }
+                }
+              ],
+              "links": {
+                "organizations.attached_images": {
+                  "href": "/organizations/{organizations.id}/attached_images",
+                  "type": "media"
+                },
+                "organizations.organization_roles": {
+                  "href": "/organization_roles?organization_id={organizations.id}",
+                  "type": "organization_roles"
+                },
+                "organizations.projects": {
+                  "href": "/projects?organization_id={organizations.id}",
+                  "type": "projects"
+                },
+                "organizations.pages": {
+                  "href": "/organizations/{organizations.id}/pages",
+                  "type": "organization_pages"
+                },
+                "organizations.owner": {
+                  "href": "/{organizations.owner.href}",
+                  "type": "owners"
+                },
+                "organizations.avatar": {
+                  "href": "/organizations/{organizations.id}/avatar",
+                  "type": "media"
+                },
+                "organizations.background": {
+                  "href": "/organizations/{organizations.id}/background",
+                  "type": "media"
+                }
+              },
+              "meta": {
+                "organizations": {
+                  "page": 1,
+                  "page_size": 20,
+                  "count": 1,
+                  "include": [],
+                  "page_count": 1,
+                  "previous_page": null,
+                  "next_page": null,
+                  "first_href": "/organizations",
+                  "previous_href": null,
+                  "next_href": null,
+                  "last_href": "/organizations"
+                }
+              }
+            }
+
+### List All Organizations [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + sort (optional, string) ... field to sort by
+  + owner (optional, string) ... string owner name of either a user or a user group to filter by.
+  + include (optional, string) ... comma separated list of linked resources to include in the response
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Organization Collection][]
+
+
+### Create a Organization [POST]
+Requires at least a *display_name*, *description* and primary_language*.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "Organizations": {
+                    "display_name": "United Federation of Projects",
+                    "description": "Lots o' Projects",
+                    "primary_language": "en-us",
+                    "links": {
+                        "projects": ["1", "2"]
+                    }
+                }
+            }
+
++ Response 201
+
+    [Organization][]
+
+# Group Workflows
+Resources related to _Panoptes Workflows_.
+
+## Workflow [/workflows/{id}{?include}]
+Workflows represent the series of questions/tasks a user will be asked
+to complete for a subject. Subjects are selected from SubjectSets. A
+Workflow may have many SubjectSets linked to, but a SubjectSet may
+only be linked to a single Workflow.
+
+A workflow has the following attributes
+
+- id
+- created_at
+- updated_at
+- finished_at
+- display_name
+- tasks
+- classifications_count
+- pairwise
+- grouped
+- prioritized
+- retirement
+- retired_set_member_subjects_count
+- active
+- aggregation
+- configuration
+- completeness
+- primary_language
+- workflow_version
+- content_language
+
+*id*, *created_at*, *updated_at*, *workflow_version*, *content_language*,
+and *classifications_count* are assigned by the API
+
+*finished_at* is set by the API to a date/time when all subjects for this workflow have been retired.
+
+Three parameters: _grouped_, _prioritized_, and _pairwise_ configure
+how the api chooses subjects for classification. They are all false by default,
+which will give a random selection of subjects from all subject\_sets that
+are part of a workflow. _grouped_ enables selecting subjects from a specific
+subject set. _prioritized_ ensures that users will see subjects in a
+predetermined order. _pairwise_ will select two subjects at a tim for classification.
+
+A workflow's `tasks` is a hash of keys to task definitions.
+
+A workflow's `first_task` is a string matching the key of its first task. (The order of keys in JSON hashes is not guaranteed).
+
+Each task has a `type` string of "single" or "multiple" choice, or "drawing". (More task types to come, e.g. Serengeti-style filter and Sunspotter's comparison.)
+
+"multiple" and "drawing" tasks have a `next` string, linking to the next task in the workflow. If this string is empty, the workflow ends. In "single" tasks, each answer has a `next` string, allowing branching based on the user's decisions.
+
+"single" and "multiple" tasks have a `question` string, which the user must answer. Answers to the question are in an `answers` array. Each answer has a `label` string displayed to the user.
+
+"single" and "multiple" tasks may define a boolean `required`, which when true will force the user to provide an answer before moving on to the next task.
+
+"drawing" tasks have an `instruction` string telling the user how to complete the task.
+
+"drawing" tasks have a `tools` array.
+
+Each tool has a `label` shown to the user.
+
+Each tool has a string `type`. Options include:
+
++ point
++ ellipse
++ circle
++ line
++ rectangle
++ polygon
+
+Each tool has a string `color`, which is applied to the marks made by the tool. Any format valid as CSS can be used.
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "workflows.subjects": {
+                        "href": "/subjects{?workflow_id=workflows.id}",
+                        "type": "subjects"
+                    },
+                    "workflows.project": {
+                        "href": "/projects/{workflows.project}",
+                        "type": "projects"
+                    },
+                    "workflows.subject_sets": {
+                        "href": "/subject_sets?workflow_id={workflows.id}",
+                        "type": "subject_sets"
+                    }
+                },
+                "workflows": [{
+                    "id": "22",
+                    "display_name": "Find moons",
+                    "created_at": "2014-02-13T10:11:34Z",
+                    "updated_at": "2014-02-13T10:11:34Z",
+                    "classifications_count": 1000,
+                    "pairwise": false,
+                    "grouped" : false,
+                    "prioritized": false,
+                    "primary_language": "es_MX",
+                    "workflow_version": "22.1",
+                    "content_language": "en_US",
+                    "first_task": "interest",
+                    "tasks": {
+                         "interest": {
+                             "type": "drawing",
+                             "question": "Color some points",
+                             "tools": [
+                                 {"value": "red", "label": "Red", "type": "point", "color": "red"},
+                                 {"value": "green", "label": "Green", "type": "point", "color": "lime"},
+                                 {"value": "blue", "label": "Blue", "type": "point", "color": "blue"}
+                             ],
+                             "next": "shape"
+                         },
+                         "shape": {
+                             "type": "multiple",
+                             "question": "What shape is this galaxy?",
+                             "answers": [
+                                 {"value": "smooth", "label": "Smooth"},
+                                 {"value": "features", "label": 'Features"},
+                                 {"value": "other", "label": "Star or artifact"}
+                             ],
+                             "required": true,
+                             "next": "roundness"
+                         },
+                         "roundness": {
+                             "type": "single",
+                             "question": "How round is it?",
+                             "answers": [
+                                 {"value": "very", "label": "Very...", "next": "shape"},
+                                 {"value": "sorta", "label": "In between"},
+                                 {"value": "not", "label": "Cigar shaped"}
+                             ],
+                             "next": null
+                         }
+                     },
+                     "retirement": {
+                        "criteria": "classification_count",
+                        "options": {
+                          "count": 15
+                        }
+                    },
+                    "links": {
+                        "project": "1",
+                        "subject_sets": ["10", "11", "12"]
+                    }
+                }]
+            }
+
+### Retrieve a single Workflow [GET]
++ Parameters
+  + include (optional, string) ... comma separated list of linked resources to include in the response
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Workflow][]
+
+### Edit a single workflow [PUT]
+A user may edit a workflow if they have edit permissions for the parent
+project. Editing tasks content requires a full replacement for the
+field. Only the subject set link may be edited. Removing a subject_set
+link doesn't destroy the subject_set.
+
+This is not the recommended way to edit links. Use the subject_set
+link mode documented below.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "workflows": {
+                    "tasks": { "format": "all new!"},
+                    "links": {
+                        "subject_sets": ["8"]
+                    }
+                }
+            }
+
++ Response 200
+
+    [Workflow][]
+
+### Destroy a single workflow [DELETE]
+A user may destroy a workflow if they have destroy permissions for the
+parent project.
+
++ Response 204
+
+## Update subject set links [/workflows/{id}/links/subject_sets]
+The recommended way to update links.
+
+### Update subject sets [POST]
+Adds the posted subject sets to a workflow's links. Creates a copy of
+the subject set if it belongs do a different project.
+
++ Parameters
+  + id (required, integer) ... id of workflow to update
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            { "subject_sets": ["9"] }
+
++ Response 200
+
+    [Workflow][]
+
+## Destroy subject set links [/workflows/{id}/links/subject_sets/{subject_set_ids}]
+The recommended way to remove links.
+
+### Destroy subject set [DELETE]
+Removes workflow's links to the given subject_sets. It does not
+destroy the subject set models.
+
++ Parameters
+  + id (required, integer) ... id of workflow to update
+  + subject_set_ids (required, string) ... comma separated list of ids to destroy
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Workflow Collection [/workflows{?page,page_size,sort,project_id,include}]
+A collection of _Panotpes Workflow_ resources.
+
+All collections add a *meta* attribute hash containing
+paging information.
+
+Workflows are returned as an array under the _workflows_ key.
+
++ Model
+
+    A JSON API formatted representation of a collection of workflows.
+
+    + Body
+
+             {
+                 "links": {
+                    "workflows.subjects": {
+                        "href": "/subjects{?workflow_id=workflows.id}",
+                        "type": "subjects"
+                    },
+                    "workflows.project": {
+                        "href": "/projects/{workflows.project}",
+                        "type": "projects"
+                    },
+                    "workflows.subject_sets": {
+                        "href": "/subject_sets?workflow_id={workflows.id}",
+                        "type": "subject_sets"
+                    }
+                 },
+                 "meta": {
+                   "workflows": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/workflows?page_size=2",
+                        "previous_href": "/workflows?page=14page_size=2",
+                        "next_href": "/workflows?page=2&page_size=2",
+                        "last_href": "/workflows?page=14&page_size=2"
+                    }
+                },
+                "workflows": [{
+                    "id": "22",
+                    "display_name": "Find moons",
+                    "created_at": "2014-02-13T10:11:34Z",
+                    "updated_at": "2014-02-13T10:11:34Z",
+                    "classifications_count": 1000,
+                    "pairwise": false,
+                    "grouped" : false,
+                    "prioritized": false,
+                    "primary_language": "es_MX",
+                    "workflow_version": "22.1",
+                    "content_language": "en_US",
+                    "first_task": "interest",
+                    "tasks": {
+                         "interest": {
+                             "type": "drawing",
+                             "question": "Color some points",
+                             "tools": [
+                                 {"value": "red", "label": "Red", "type": "point", "color": "red"},
+                                 {"value": "green", "label": "Green", "type": "point", "color": "lime"},
+                                 {"value": "blue", "label": "Blue", "type": "point", "color": "blue"}
+                             ],
+                             "next": "shape"
+                         },
+                         "shape": {
+                             "type": "multiple",
+                             "question": "What shape is this galaxy?",
+                             "answers": [
+                                 {"value": "smooth", "label": "Smooth"},
+                                 {"value": "features", "label": 'Features"},
+                                 {"value": "other", "label": "Star or artifact"}
+                             ],
+                             "required": true,
+                             "next": "roundness"
+                         },
+                         "roundness": {
+                             "type": "single",
+                             "question": "How round is it?",
+                             "answers": [
+                                 {"value": "very", "label": "Very...", "next": "shape"},
+                                 {"value": "sorta", "label": "In between"},
+                                 {"value": "not", "label": "Cigar shaped"}
+                             ],
+                             "next": null
+                         }
+                     },
+                    "links": {
+                        "project": "1",
+                        "subject_sets": ["10", "11", "12"]
+                    }
+                },{
+                    "id": "23",
+                    "display_name": "Find moons",
+                    "created_at": "2014-02-13T10:11:34Z",
+                    "updated_at": "2014-02-13T10:11:34Z",
+                    "classifications_count": 1000,
+                    "pairwise": false,
+                    "grouped" : false,
+                    "prioritized": false,
+                    "primary_language": "es_MX",
+                    "workflow_version": "22.1",
+                    "content_language": "en_US",
+                    "first_task": "interest",
+                    "tasks": {
+                         "interest": {
+                             "type": "drawing",
+                             "question": "Color some points",
+                             "tools": [
+                                 {"value": "red", "label": "Red", "type": "point", "color": "red"},
+                                 {"value": "green", "label": "Green", "type": "point", "color": "lime"},
+                                 {"value": "blue", "label": "Blue", "type": "point", "color": "blue"}
+                             ],
+                             "next": "shape"
+                         },
+                         "shape": {
+                             "type": "multiple",
+                             "question": "What shape is this galaxy?",
+                             "answers": [
+                                 {"value": "smooth", "label": "Smooth"},
+                                 {"value": "features", "label": 'Features"},
+                                 {"value": "other", "label": "Star or artifact"}
+                             ],
+                             "required": true,
+                             "next": "roundness"
+                         },
+                         "roundness": {
+                             "type": "single",
+                             "question": "How round is it?",
+                             "answers": [
+                                 {"value": "very", "label": "Very...", "next": "shape"},
+                                 {"value": "sorta", "label": "In between"},
+                                 {"value": "not", "label": "Cigar shaped"}
+                             ],
+                             "next": null
+                         }
+                     },
+                    "links": {
+                        "project": "1",
+                        "subject_sets": ["10", "11", "12"]
+                    }
+                }]
+            }
+
+### List All Workflows [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + sort (optional, string) ... field to sort by id by default
+  + project_id (optional, integer) ... filter workflows by project id
+  + include (optional, string) ... comma separated list of linked resources to load
+  + complete (optional, string) ... filter complete ('true') and incomplete ('false') workflows
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Workflow Collection][]
+
+### Create a Workflow [POST]
+Requires a set of *tasks*, a *primary_language*, a *display_name*, and a
+link to a *project*. Can optionally set cellect parameters *grouped*,
+*prioritized*, and *pairwise* (all false by default) and links to
+*subject_sets*.
+
+A SubjectSet that already belongs to another workflow will be
+duplicated when it is linked.
+
+A Workflow may also include a _retirement_ object with a _criteria_
+key and an _options_ key. _criteria_ describes the strategy Panoptes
+will use to decide when to retire subjects while _options_ configures
+the strategy. There are 2 valid criteria:
+ 1. `classification_count` will retire subjects after a target number
+ of classifications are reached. You must supply an `options` hash
+ with an integer `count` to specify the minimum number of classifications.
+   + `{"criteria": "classification_count", "options": {"count": 15} }`
+ 2. `never_retire` will never retire subjects and requires an empty
+ `options` hash.
+   + `{"criteria": "never_retire "options": {} }`
+
+If retirement is left blank Panoptes defaults to the `classification_count`
+strategy with 15 classifications per subject.
+
+A Workflow has a _configuration_ object that is used to store client configuration details.
+Three attributes in this object are reserved: _training_set_ids_, _training_chances_ and _training_default_chance_,
+_training_set_ids_ are used to choose training data from in the subject selectors
+and to tell the counting systems which subjects to ignore as training subjects do not retire.
+_training_default_chance_ is the fallback chance a user will see a training subject and also applies if _training_chances_ are not set
+_training_chances_ are used to determine when to show a training subject and each index reflects a seen subject by the user.
+E.g [ 1, 0.5, 0.1 ] reflects when i have seen 0 subjects (first element) on your workflow i will have a 100% chance of selecting a training subject.
+After seeing 1 subject, I will have a 50% chance, on the second subject i will have a 10% chance, after that the default chance applies.
+
+Normally when setting training subject selection you would set the retirement
+config to "never_retire" and use another system (e.g. Caesar) to handle retirement.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "workflows": {
+                    "display_name": "Spot Monsters!",
+                    "tasks":  {
+                        "interest": {
+                            "type": "drawing",
+                            "question": "Color some points",
+                            "tools": [
+                                {"value": "red", "label": "Red", "type": "point", "color": "red"},
+                                {"value": "green", "label": "Green", "type": "point", "color": "lime"},
+                                {"value": "blue", "label": "Blue", "type": "point", "color": "blue"}
+                            ],
+                            "next": "shape"
+                        },
+                        "shape": {
+                            "type": "multiple",
+                            "question": "What shape is this galaxy?",
+                            "answers": [
+                                {"value": "smooth", "label": "Smooth"},
+                                {"value": "features", "label": 'Features"},
+                                {"value": "other", "label": "Star or artifact"}
+                            ],
+                            "required": true,
+                            "next": "roundness"
+                        },
+                        "roundness": {
+                            "type": "single",
+                            "question": "How round is it?",
+                            "answers": [
+                                {"value": "very", "label": "Very...", "next": "shape"},
+                                {"value": "sorta", "label": "In between"},
+                                {"value": "not", "label": "Cigar shaped"}
+                            ],
+                            "next": null
+                        }
+                    },
+                    "retirement": {
+                        "criteria": "classification_count",
+                        "options": {
+                            "count": 15
+                        }
+                    },
+                    "primary_language": "en-ca",
+                    "links": {
+                        "project": "42",
+                        "subject_sets": ["1", "2"]
+                    }
+                }
+            }
+
++ Response 201
+
+    [Workflow][]
+
+# Group Subject Set
+Resources related to _Panoptes SubjectSets_
+
+## SubjectSet [/subject_sets/{id}{?include}]
+Subject Sets represent collections of Subjects that are paired with a
+workflow of questions to be answered. A SubjectSet belongs to one
+Workflow, while a single Workflow may have many SubjectSets.
+
+A SubjectSet has the following attributes
+
+- id
+- display_name
+- metadata
+- set_member_subjects_count
+- created_at
+- updated_at
+
+All attributes except display_name are set by the API
+
++ Parameters
+  + id (required, integer) ... integer id of the subject_set to retrieve
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "subject_sets.workflows": {
+                        "href": "/workflows?subject_set_id={subject_sets.id}",
+                        "type": "workflows"
+                    },
+                    "subject_sets.subjects": {
+                        "href": "/subjects{?subject_set_id=subject_sets.id}",
+                        "type": "subjects"
+                    },
+                    "subject_sets.set_member_subjects": {
+                        "href": "/set_member_subjects{?subject_set_id=subject_sets.id}",
+                        "type": "set_member_subjects"
+                    },
+                    "subject_sets.project": {
+                        "href": "/project/{subject_sets.project}",
+                        "type": "projects"
+                    }
+                },
+                "subject_sets": [{
+                    "id": "20",
+                    "display_name": "Weird Looking Galaxies",
+                    "metadata": {
+                        "category": "things"
+                    },
+                    "created_at": "2014-02-13T10:11:34Z",
+                    "updated_at": "2014-02-13T10:11:34Z",
+                    "set_member_subject_count": 100,
+                    "links": {
+                        "project": "1",
+                        "workflow": "10"
+                    }
+                }]
+            }
+
+### Retrieve a single Subject Set [GET]
++ Parameters
+  + include (optional, string) ... comma separated list of linked resources to include in the response
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [SubjectSet][]
+
+### Edit a single Subject Set [PUT]
+A user may only edit a subject if they edit permissions for the parent
+project. The display_name attributes and links to workflows and subjects are
+editable. Editing links requires a full representation of the new set
+of links, but does not destroy unlinked resources.
+
+This is not the recommended way to manage linked subjects.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+              {
+                  "subject_sets": {
+                      "display_name": "Normal Galaxies",
+                      "links": {
+                          "subjects": ["1", "2", "4", "5", "10"]
+                      }
+                  }
+              }
+
++ Response 200
+
+    [SubjectSet][]
+
+### Destroy a single Subject Set [DELETE]
+A user may only destroy a subject set if they have destroy permissions
+for the subject set's project.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Subject Set Links [/subject_sets/{id}/links/{link_type}]
+Allows the addition of links to subjects to a subject
+set object without needing to send a full representation of the linked
+relationship.
+
+This is the recommended way to managed linked subjects.
+
++ Parameters
+  + id (required, integer) ... the id of the Subject Set to modify
+  + link_type (required, string) ... the relationship to modify must be the same as the supplied body key
+
+### Add to link [POST]
+Only Subjects links may be edited.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "subjects": ["1", "5", "9", "11"]
+            }
+
++ Response 200
+
+    [SubjectSet][]
+
+## Destroy Subject Set Links [/subject_sets/{id}/links/{link_type}/{link_ids}]
+Allows links to be removed without sending a full representation of the
+linked relationship.
+
++ Parameters
+  + id (required, integer) ... the id of the Subject Set to modify
+  + link_type (required, string) ... the relationship to modify
+  + link_ids (required, integer) ... comma separated list of ids to remove
+
+### Destroy some links [DELETE]
+Will only remove the link. This operation does not destroy the linked object.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## SubjectSet Collection [/subject_sets{?page,page_size,sort,project_id,workflow_id,include}]
+A collection of SubjectSet resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+Subject Sets are returned as an array under *subject_sets*.
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "subject_sets.workflows": {
+                        "href": "/workflows?subject_set_id={subject_sets.id}",
+                        "type": "workflows"
+                    },
+                    "subject_sets.subjects": {
+                        "href": "/subjects{?subject_set_id=subject_sets.id}",
+                        "type": "subjects"
+                    },
+                    "subject_sets.set_member_subjects": {
+                        "href": "/set_member_subjects{?subject_set_id=subject_sets.id}",
+                        "type": "set_member_subjects"
+                    },
+                    "subject_sets.project": {
+                        "href": "/project/{subject_sets.project}",
+                        "type": "projects"
+                    }
+                },
+                "meta": {
+                    "subject_sets": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/subject_sets?page_size=2",
+                        "previous_href": "/subject_sets?page=14page_size=2",
+                        "next_href": "/subject_sets?page=2&page_size=2",
+                        "last_href": "/subject_sets?page=14&page_size=2"
+                    }
+                },
+                "subject_sets": [{
+                    "id": "20",
+                    "display_name": "Weird Looking Galaxies",
+                    "metadata": {
+                        "category": "things"
+                    },
+                    "created_at": "2014-02-13T10:11:34Z",
+                    "updated_at": "2014-02-13T10:11:34Z",
+                    "set_member_subject_count": 100,
+                    "links": {
+                        "project": "1",
+                        "workflow": "10"
+                    }
+                },{
+                    "id": "20",
+                    "display_name": "Boring Looking Galaxies",
+                    "metadata": {
+                        "category": "things"
+                    },
+                    "created_at": "2014-02-13T10:11:34Z",
+                    "updated_at": "2014-02-13T10:11:34Z",
+                    "set_member_subject_count": 100,
+                    "links": {
+                        "project": "1",
+                        "workflow": "11"
+                    }
+                }]
+            }
+
+### Retrieve a list of Subject Sets [GET]
++ Parameters
+  + page (optional, integer) ... index of the page to retrieve 1 by default
+  + page_size (optional, integer) ... number of items per page 20 by default
+  + sort (optional, string) ... field to sort by, id by default
+  + project_id (optional, integer) ... filter by linked project
+  + workflow_id (optional, integer) ... filter by linked workflow
+  + include (optional, string) ... comma separated list of linked resources to include in the response
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [SubjectSet Collection][]
+
+### Create a Subject Set [POST]
+A subject set must supply a display_name and a link to a project. Optionally,
+it may include links to subjects and a single workflow.
+
+Instead of a list of subjects a SubjectSet may include a link to a
+Collection which will import the collection's subjects into a new
+SubjectSet.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "subject_sets": {
+                    "display_name": "A Group of Interesting Subjects",
+                    "metadata": {
+                        "category": "things"
+                    },
+                    "links": {
+                        "project": "43",
+                        "workflows": ["47"],
+                        "subjects": ["234", "1243", "8023"]
+                    }
+                }
+            }
+
++ Response 201
+
+    [SubjectSet][]
+
+#Group User Group
+Resources related to _Panoptes User Groups_
+
+## UserGroup [/user_groups/{id}{?include}]
+A user group represents a collection of users that share ownership of
+projects, collections, and classifications. Individual users within
+the group can be given different levels of permissions to act on
+group owned resources.
+
+A User Group has the following attributes:
+
+- id
+- created_at
+- updated_at
+- classifications_count
+- activated_state
+- name
+- display_name
+
+*id*, *created_at*, *updated_at*, and *classifications_count* are all
+ set by the API.
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "user_groups.projects": {
+                        "href": "/projects?owner={user_groups.owner_name}",
+                        "type": "projects"
+                    },
+                    "user_groups.classifications": {
+                        "href": "/classifications?user_group_id={user_groups.id}",
+                        "type": "classifications"
+                    },
+                    "user_groups.collections": {
+                        "href": "/collections?owner={user_groups.owner_name}"
+                        "type": "collections"
+                    },
+                    "user_groups.users": {
+                        "href": "/users?user_group_id={user_groups.id}",
+                        "type": "users"
+                    },
+                    "user_groups.memberships": {
+                        "href": "/memberships?user_group_id={user_groups.id}",
+                        "type": "memberships"
+                    }
+                },
+                "user_groups": [{
+                    "id": "42",
+                    "name": "a_cool_group",
+                    "display_name": "A Cool Group",
+                    "owner_name": "a_cool_group",
+                    "created_at": "2014-08-11T10:11:34Z",
+                    "updated_at": "2014-12-11T00:11:34Z",
+                    "classifications_count": "1002340",
+                    "activated_state": "active",
+                    "links": {
+                        "memberships": ["101", "102"],
+                        "users": ["10001", "9102"],
+                        "projects": ["10"],
+                        "collections": ["11"]
+                    }
+                }]
+            }
+
+### Retrieve a single User Group [GET]
++ Parameters
+  + include (optional, string) ... comma separated list of linked resources to include in the response
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [UserGroup][]
+
+### Edit a single User Group [PUT]
+A user with edit permissions on a user group may edit the group's
+name, display_name, or links to projects, collections and
+users. Projects and Collections may only be removed. Removing a
+link to a project or collection will destroy the project or
+collection, removing a link to a user will set their
+membership state to inactive.
+
+Adding a user creates a membership link with an 'invited'
+state. Membership and Classification links cannot be modified.
+
+This is not the recommended way to modify links.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "user_groups": {
+                    "display_name": "A Uncool Group",
+                    "links": {
+                        "projects": [],
+                        "collections": []
+                    }
+                }
+            }
+
++ Response 200
+
+    [UserGroup][]
+
+
+### Destroy a User Group [DELETE]
+A user may destroy a group if they have the requisite permissions. A
+destroyed group and linked projects, collections, and memberships will
+be placed in an 'inactive' state.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Add a link [/user_groups/{id}/links/users]
+Only links to users may be added.
+
+### Add user links [POST]
+Creates a membership for a user. The membership will be immediately
+added, but a user won't show up in the group's links until they set
+their membership to 'active'.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "users": ["123", "23"]
+            }
+
++ Response 200
+
+    [UserGroup][]
+
+## Remove a Link [/user_groups/{id}/links/{link_type}/{link_ids}]
+Allows links to users, projects, or collections to be removed. Removed
+projects and collections are deleted. Removed users have their
+membership set to 'inactive'.
+
++ Parameters
+  + id (required, integer) ... id of the group to be edited.
+  + link_type (required, string) ... name of the link to modify
+  + link_ids (required, string) ... comma separated list of ids to remove
+
+### Remove links [DELETE]
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## UserGroup Collection [/user_groups{?page,page_size,sort,user_id,include}]
+A collection of User Group resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+User Groups are returned as an array under *user_groups*.
+
++ Model
+
+    + Body
+
+            {
+                 "links": {
+                    "user_groups.projects": {
+                        "href": "/projects?owner={user_groups.owner_name}",
+                        "type": "projects"
+                    },
+                    "user_groups.classifications": {
+                        "href": "/classifications?user_group_id={user_groups.id}",
+                        "type": "classifications"
+                    },
+                    "user_groups.collections": {
+                        "href": "/collections?owner={user_groups.owner_name}"
+                        "type": "collections"
+                    },
+                    "user_groups.users": {
+                        "href": "/users?user_group_id={user_groups.id}",
+                        "type": "users"
+                    },
+                    "user_groups.memberships": {
+                        "href": "/memberships?user_group_id={user_groups.id}",
+                        "type": "memberships"
+                    }
+                },
+                "meta": {
+                    "user_groups": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/user_groups?page_size=2",
+                        "previous_href": "/user_groups?page=14page_size=2",
+                        "next_href": "/user_groups?page=2&page_size=2",
+                        "last_href": "/user_groups?page=14&page_size=2"
+                    }
+                },
+                "user_groups": [{
+                    "id": "42",
+                    "name": "a_cool_group",
+                    "display_name": "A Cool Group",
+                    "owner_name": "a_cool_group",
+                    "created_at": "2014-08-11T10:11:34Z",
+                    "updated_at": "2014-12-11T00:11:34Z",
+                    "classifications_count": "1002340",
+                    "activated_state": "active"
+                    "links": {
+                        "memberships": ["101", "102"],
+                        "users": ["10001", "9102"],
+                        "projects": ["10"],
+                        "collections": ["11"]
+                    }
+                },{
+                    "id": "44",
+                    "name": "a_cool_gang",
+                    "display_name": "A Cool Gang",
+                    "owner_name": "a_cool_gang",
+                    "created_at": "2014-09-10T10:41:54Z",
+                    "updated_at": "2014-11-11T01:21:33Z",
+                    "classifications_count": "2341",
+                    "activated_state": "active"
+                    "links": {
+                        "memberships": ["101", "102"],
+                        "users": ["10001", "9102"],
+                        "projects": ["10"],
+                        "collections": ["11"]
+                    }
+                }]
+            }
+
+### List all User Groups [GET]
++ Parameters
+  + page (optional, integer) ... index of the page to retrieve 1 by default
+  + page_size (optional, integer) ... number of items per page 20 by default
+  + sort (optional, string) ... field to sort by, id by default
+  + user_id (optional, integer) ... filter list to groups a user is part of
+  + include (optional, string) ... comma separated list of linked resources to include in the response
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [UserGroup Collection][]
+
+### Create a User Group [POST]
+A user can create new group by just giving it a name (how it appears
+in a @mention and url) or display name (how it shown to other users).
+
+In the case where only a display name is provided, the name will be
+set to the underscored, downcased, and url escaped version of the
+display name. When only a name is provided, display_name will be set
+to the same string as name.
+
+Optionally links to other users who will be given
+memberships with the 'invited' state.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "user_groups": {
+                    "display_name": "A Super Grouper!",
+                    "links": {
+                        "users": ["10", "22"]
+                    }
+                }
+            }
+
++ Response 201
+
+    [UserGroup][]
+
+# Group Membership
+Resources related to _Panoptes Group Memberships_
+
+## Membership [/memberships/{id}]
+A membership represents and user's status in a group and their role
+within the group.
+
+It has the following attributes:
+
+- id
+- created_at
+- updated_at
+- state
+- roles
+
+*id*, *created_at*, and *update_at* are assigned by the API.
+
+Membership *state* can be "invited", "active", "inactive". When a user
+is added to a group, their state is set to "invited". After they take
+action to join the group their state becomes "active". A User who leaves
+a group has their state set to "inactive".
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "memberships.user_group": {
+                        "href": "/user_groups/{memberships.user_group}",
+                        "type": "user_groups"
+                    },
+                    "memberships.user": {
+                        "href": "/users/{memberships.user}",
+                        "type": "users"
+                    }
+                },
+                "memberships": {
+                    "id": "101",
+                    "created_at": "2014-04-20T06:23:12Z",
+                    "updated_at": "2014-04-20T06:23:12Z",
+                    "state": "active",
+                    "roles": ["group_admin"],
+                    "links": {
+                        "user": "12",
+                        "user_groups": "31"
+                    }
+                }
+            }
+
+### Retreive a Membership [GET]
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Membership][]
+
+### Edit a Membership [PUT]
+A user can ordinary only change their membership state. A user with
+user group edit permissions can change the membership's roles.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "memberships": {
+                    "state": "inactive"
+                }
+            }
+
++ Response 200
+
+    [Membership][]
+
+### Destroy a Membership [DELETE]
+Destroying a membership only sets the state to inactive. A user may
+destroy their own memberships and a user with edit permission in a
+user group may destroy membership for that group.
+
++ Response 204
+
+## Membership Collection [/memberships{?page,page_size,sort,user_id,user_group_id}]
+A collection of Membership resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+Memberships are returned as an array under *memberships*.
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "memberships.user_group": {
+                        "href": "/user_groups/{memberships.user_group}",
+                        "type": "user_groups"
+                    },
+                    "memberships.user": {
+                        "href": "/users/{memberships.user}",
+                        "type": "users"
+                    }
+                },
+                "meta": {
+                    "memberships": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/memberships?page_size=2",
+                        "previous_href": "/memberships?page=14page_size=2",
+                        "next_href": "/memberships?page=2&page_size=2",
+                        "last_href": "/memberships?page=14&page_size=2"
+                    }
+                },
+                "memberships": [{
+                    "id": "101",
+                    "created_at": "2014-04-20T06:23:12Z",
+                    "updated_at": "2014-04-20T06:23:12Z",
+                    "state": "active",
+                    "roles": ["group_admin"],
+                    "links": {
+                        "user": "12",
+                        "user_groups": "31"
+                    }
+                },{
+                    "id": "111",
+                    "created_at": "2014-04-20T06:23:12Z",
+                    "updated_at": "2014-04-20T06:23:12Z",
+                    "state": "inactive",
+                    "roles": [],
+                    "links": {
+                        "user": "12",
+                        "user_groups": "20"
+                    }
+                }]
+            }
+
+### List all memberships [GET]
++ Parameters
+  + page (optional, integer) ... index of the page to retrieve 1 by default
+  + page_size (optional, integer) ... number of items per page 20 by default
+  + sort (optional, string) ... field to sort by, id by default
+  + user_id (optional, integer) ... filter list to memberships for a user
+  + user_group_id (optional, integer) ... filter list to memberships for a user group
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Membership Collection][]
+
+### Create a Membership [POST]
+A membership creation request must include a link to a user and to a
+user_group, although currently the linked user must always be the current user.
+The request must also include the secret join_token of the user_group as an attribute
+of the membership (although this property is not persisted).
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "memberships": {
+                    "join_token": "decafbad",
+                    "links": {
+                        "user": "10",
+                        "user_group": "11
+                    }
+                }
+            }
+
++ Response 201
+
+    [Membership][]
+
+# Group Collection
+Resources related to _Panoptes Collections_.
+
+## Collection [/collection/{id}]
+A collection is a user curated set of subjects for a particular
+project.
+
+It has the following attributes:
+
+- id
+- created_at
+- updated_at
+- name
+- display_name
+- default_subject
+
+*id*, *created_at*, and *updated_at* are set by the API.
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "collections.subjects": {
+                        "href": "/subjects{?collection_id=collections.id}",
+                        "type": "subjects"
+                    }
+                },
+                "collections": [{
+                    "id": "101",
+                    "created_at": "2014-04-20T06:23:12Z",
+                    "updated_at": "2014-04-20T06:23:12Z",
+                    "name" : "flowers",
+                    "display_name": "Lots of Pretty flowers",
+                    "default_subject_src": "panoptes-uploads.zooniverse.org/production/subject_location/hash.jpeg",
+                    "links": {
+                        "owner": {
+                            "id": "10",
+                            "display_name": "Owner 10",
+                            "href": "/users/10",
+                            "type": "users"
+                        }
+                    }
+                }]
+            }
+
+### Retrieve a single collection [GET]
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Collection][]
+
+### Edit a collection [PUT]
+A user may edit a collection they are the owner of or have edit
+permissions for. A user may edit a collection's name, or display_name,
+and may also send a full representation of a collections subject links
+or a single subject id to set the default subject.
+
+Sending subject links through a put is not recommend, especially if a
+collection has many subjects.
+
+Removing subjects from a collection does not destroy the subject record.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "collections": {
+                    "name": "flower_power",
+                }
+            }
+
++ Response 200
+
+    [Collection][]
+
+### Destroy a Collection [DELETE]
+A user who is the owner of a collection or who has destroy permissions
+for a collection, may delete it.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Add subject links [/collections/{id}/links/subjects]
+Add subjects to a collection.
+
+### Add links [POST]
+A user is permitted to add subject if they are the collection owner or
+have edit permissions.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "subjects": ["1", "2"]
+            }
+
++ Response 200
+
+    [Collection][]
+
+## Remove subject links [/collection/{id}/links/subjects/{link_ids}]
+Remove subjects from a collection.
+
+### Remove links [DELETE]
+A user is permitted to remove subjects if they are the collection
+owner or have edit permissions.
+
++ Parameters
+  + id (required, integer) ... id of collection to edit
+  + link_ids (required, string) ... comma separated list of ids to remove
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 204
+
+## Add default subject link [/collections/{id}/links/default_subject]
+Links a default subject to a collection. This subject's first media
+location URL will be included in the serialized collection and used
+as the thumbnail. Update this attribute with `null` to use the first
+subject in the linked list instead.
+
+### Add links [POST]
+A user is permitted to add a default subject if they are the collection
+owner or have edit permissions.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "default_subject": "1"
+            }
+
++ Response 200
+
+    [Collection][]
+
+## Collection Collection [/collections{?page,page_size,sort,owner}]
+A collection of Collection resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+Collections are returned as an array under *collections*.
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "collections.subjects": {
+                        "href": "/subjects{?collection_id=collections.id}",
+                        "type": "subjects"
+                    }
+                },
+                "meta": {
+                    "collections": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/collections?page_size=2",
+                        "previous_href": "/collections?page=14page_size=2",
+                        "next_href": "/collections?page=2&page_size=2",
+                        "last_href": "/collections?page=14&page_size=2"
+                    }
+                },
+                "collections": [{
+                    "id": "101",
+                    "created_at": "2014-04-20T06:23:12Z",
+                    "updated_at": "2014-04-20T06:23:12Z",
+                    "name" : "flowers",
+                    "display_name": "Lots of Pretty flowers",
+                    "links": {
+                        "owner": {
+                            "id": "10",
+                            "display_name": "Owner 10",
+                            "href": "/users/10",
+                            "type": "users"
+                        }
+                    }
+                },{
+                    "id": "102",
+                    "created_at": "2014-04-21T09:23:12Z",
+                    "updated_at": "2014-04-21T16:23:12Z",
+                    "name" : "bad_flowers",
+                    "display_name": "Lots of Ugly flowers",
+                    "links": {
+                        "owner": {
+                            "id": "11",
+                            "display_name": "Owner 11",
+                            "type": "user_groups",
+                            "href": "/user_groups/11"
+                        }
+                    }
+                }]
+            }
+
+### List all collections [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + sort (optional, string) ... field to sort by
+  + owner (optional, string) ... string name of either a user or user group to filter by
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Collection Collection][]
+
+### Create Collection [POST]
+A Collection only needs a *display name* to be created. By default
+name will be the underscored and downcased version of *display_name*,
+and the current user will be set as the owner.
+
+Optionally a create request may include name, a link to an
+owner, and links to subjects.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "collections": {
+                    "display_name": "flowers",
+                    "links": {
+                        "owner": {
+                            "id" : "10",
+                            "display_name": "Owner 10",
+                            "type": "user_groups",
+                            "href": "/user_groups/10"
+                        }
+                    }
+                }
+            }
+
++ Response 201
+
+    [Collection][]
+
+# Group SubjectQueue
+
+This API resource was removed. Based on our logging, there was no usage of this API at all,
+and it had been non-functional for a while (due to the SubjectQueue resources themselves not
+being used for anything in Panoptes). Technically, we broke the API versioning here, but
+because it started to have a significant maintenance cost, we feel this was good tradeoff
+compared to maintaining it until API version 2.
+
+# Group ProjectRole
+Resources related to Roles for _Panoptes Projects_
+
+## ProjectRole [/project_roles/{id}{?include}]
+A Project Role resources contains an array of roles assigned to a user
+for a particular project
+
+It has the following attributes:
+
+- id
+- created_at
+- updated_at
+- roles
+
+*id*, *created_at*, and *updated_at* are set the by the API. Project
+roles are visible to the project owner and the user given roles.
+
+roles for a project may be:
+- collaborator - full access to edit or delete a project
+- tester - Able to see a private project
+- scientist - Able to moderate project Talk and see a private project
+- moderator - Able to moderate project Talk and see a private project
+- translator - Able to create new and edit project and workflow translations
+
++ Parameters
+  + id (required, integer) ... integer identifier of the project role resource
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "project_roles.owner": {
+                        "href": "/{project_roles.owner.href}",
+                        "type": "owners"
+                    },
+                    "project_roles.project": {
+                        "href": "/projects/{project_roles.project}",
+                        "type": "projects"
+                    }
+                },
+                "project_roles": [{
+                    "id": "942",
+                    "roles": ["collaborator"],
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "links": {
+                        "project": "11"
+                        "owner": {
+                            "id": "3",
+                            "display_name": "Owner 3",
+                            "type": "users",
+                            "href": "users/3"
+                        }
+                    }
+                }]
+            }
+
+### Retrieve a single ProjectRole [GET]
++ Parameters
+  + include (optional, string) ... comma separate list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [ProjectRole][]
+
+### Edit a ProjectRole [PUT]
+A user with permissions to edit a project may modify roles for other
+users in the project. A user without edit permissions may not edit
+their own roles.
+
+Editing requires sending a full representation of the roles array.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "project_roles": {
+                    "roles": ["tester", "translator"]
+                }
+            }
+
++ Response 200
+
+    [ProjectRole][]
+
+## ProjectRole Collection [/project_roles{?user_id,project_id,page,page_size,sort,include}]
+A Collection of ProjectRole resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+ProjectRoles are returned as an array under *project_roles*.
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "project_roles.owner": {
+                        "href": "/{project_roles.owner.href}",
+                        "type": "owners"
+                    },
+                    "project_roles.project": {
+                        "href": "/projects/{project_roles.project}",
+                        "type": "projects"
+                    }
+                },
+                "meta": {
+                    "project_roles": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/project_roles?page_size=2",
+                        "previous_href": "/project_roles?page=14page_size=2",
+                        "next_href": "/project_roles?page=2&page_size=2",
+                        "last_href": "/project_roles?page=14&page_size=2"
+                    }
+                },
+                "project_roles": [{
+                    "id": "942",
+                    "roles": ["collaborator"],
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "links": {
+                        "project": "11",
+                        "owner": {
+                            "id": "3",
+                            "display_name": "Owner 3",
+                            "type": "users",
+                            "href": "users/3"
+                        }
+                    }
+                },{
+                "id": "949",
+                    "roles": ["tester", "translator"],
+                    "created_at": "2014-08-20T06:23:12Z",
+                    "updated_at": "2014-09-21T08:22:22Z",
+                    "links": {
+                        "project": "81",
+                        "owner": {
+                            "id": "33",
+                            "display_name": "Owner 33",
+                            "type": "users",
+                            "href": "users/33"
+                        }
+                    }
+                }]
+            }
+
+### List all ProjectRoles [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + sort (optional, string) ... field to sort by
+  + user_id (optional, integer) ... user_id to see roles for
+  + project_id (optional, integer) ... project_id to see roles for
+  + include (optional, string) ... comma separate list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [ProjectRole Collection][]
+
+### Create a ProjectRole [POST]
+Creating a Project Role resource requires a link to a user and a
+project. You may also include an array of roles.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "project_roles": {
+                    "roles": ["collaborator"],
+                    "links": {
+                        "project": "11",
+                        "user": "30"
+                    }
+                }
+            }
+
++ Response 201
+
+    [ProjectRole][]
+
+# Group ProjectPreference
+Resources related to setting preferences for _Panoptes Projects_
+
+## ProjectPreference [/project_preferences/{id}{?include}]
+A Project Preference resource captures a user's settings for a
+particular project.
+
+It has the following attributes:
+
+- id
+- created_at
+- updated_at
+- preferences
+- email_communication
+
+*id*, *created_at*, and *updated_at* are set the by the API. Project
+ preferences are only visible to user they belong to.
+
++ Parameters
+  + id (required, integer) ... integer identifier of resource
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "project_preferences.user": {
+                        "href": "/user/{project_preferences.user}",
+                        "type": "users"
+                    },
+                    "project_preferences.project": {
+                        "href": "/projects/{project_preferences.project}",
+                        "type": "projects"
+                    }
+                },
+                "project_preferences": [{
+                    "id": "942",
+                    "email_communication": true,
+                    "preferences": {
+                        "tutorial": true
+                    },
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "links": {
+                        "user" : "30",
+                        "project": "11"
+                    }
+                }]
+            }
+
+### Retrieve a single ProjectPreference [GET]
++ Parameters
+  + include (optional, string) ... comma separated list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [ProjectPreference][]
+
+### Edit a ProjectPreference [PUT]
+Only the owning user may edit a Project Preference resource. The
+email_communication field and the preferences field may be edited.
+
+Editing the preferences field requires a full representation of the
+preferences hash to be sent.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "project_preferences": {
+                    "preferences": {
+                        "mini_course": false,
+                    }
+                }
+            }
+
++ Response 200
+
+    [ProjectPreference][]
+
+## ProjectPreference Collection [/project_preferences{?user_id,project_id,page,page_size,sort,include}]
+A Collection of ProjectPreference resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+ProjectPreferences are returned as an array under *project_preferences*.
+
++ Model
+
+            {
+                "links": {
+                    "project_preferences.user": {
+                        "href": "/user/{project_preferences.user}",
+                        "type": "users"
+                    },
+                    "project_preferences.project": {
+                        "href": "/projects/{project_preferences.project}",
+                        "type": "projects"
+                    }
+                },
+                "meta": {
+                    "project_preferences": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/project_preferences?page_size=2",
+                        "previous_href": "/project_preferences?page=14page_size=2",
+                        "next_href": "/project_preferences?page=2&page_size=2",
+                        "last_href": "/project_preferences?page=14&page_size=2"
+                    }
+                },
+                "project_preferences": [{
+                    "id": "942",
+                    "email_communication": true,
+                    "preferences": {
+                        "tutorial": true
+                    },
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "links": {
+                        "user" : "30",
+                        "project": "11"
+                    }
+                },{
+                    "id": "949",
+                    "email_communication": true,
+                    "preferences": {
+                        "tutorial": true
+                    },
+                    "created_at": "2014-08-20T06:23:12Z",
+                    "updated_at": "2014-09-21T08:22:22Z",
+                    "links": {
+                        "user" : "33",
+                        "project": "81"
+                    }
+                }]
+            }
+
+### List all ProjectPreferences [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + sort (optional, string) ... field to sort by
+  + user_id (optional, integer) ... user_id to see preferences for
+  + project_id (optional, integer) ... project_id to see preferences for
+  + include (optional, string) ... comma separated list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [ProjectPreference Collection][]
+
+### Create a ProjectPreference [POST]
+Creating a Project Preference requires only a link to a
+project. Optionally a boolean flag for email_communication or a hash
+of settings for preferences may be included.
+
+Since a user can only create, read, or modify their own preferences
+the currently logged in user is always set as the linked user on
+creation.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "project_preferences": {
+                    "email_communication": true,
+                    "preferences": {
+                        "tutorial": true
+                    },
+                    "links": {
+                        "project": "1"
+                    }
+                }
+            }
+
++ Response 201
+
+    [ProjectPreference][]
+
+### Edit a ProjectPreference Setting [POST]
+Project owners may edit the settings attribute of any user's Project Preferences associated
+with that project (and only that project). You need to provide the "user_id" and the "project_id"
+to specify the resource to apply the settings update to. Note: in the settings payload the
+"workflow_id" is the only accepted parameter.
+
++ Parameters
+  + user_id (string) ... The id of the user whose preference needs updating
+  + project_id (string) ... The id of the project the preference setting should be scoped to
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "project_preferences": {
+                    "settings": {
+                        "workflow_id": 1234,
+                    }
+                }
+            }
+
++ Response 200
+
+    [ProjectPreference][]
+
+
+# Group ProjectContents
+
+This API was removed.
+
+# Group WorkflowContents
+
+This API was removed.
+
+# Group SetMemberSubject
+Resources that represent _Panoptes Subjects_ within _Panoptes SubjectSets_.
+
+## SetMemberSubject [/set_member_subjects/{id}{?include}]
+A Set Member Subject resource contains the state of a subject that is
+included in a resource.
+
+It has the following attributes
+
+- id
+- created_at
+- updated_at
+- state
+- priority
+
+*id*, *created_at*, and *updated_at* are set by the api server.
+
++ Parameters
+  + id (required, integer) ... integer identifier for the resource
+
++ Model
+
+    + Body
+
+            {
+                links: {
+                    "set_member_subjects.subject": {
+                        "href": "/subjects/{set_member_subjects.subject}",
+                        "type": "subjects"
+                    },
+                    "set_member_subjects.subject_set": {
+                        "href": "/subject_sets/{set_member_subjects.subject_set}",
+                        "type": "subject_sets"
+                    }
+                },
+                "set_member_subjects": [{
+                    "id": "1023",
+                    "created_at": "2014-03-20T00:15:47Z",
+                    "updated_at": "2013-09-30T10:20:32Z",
+                    "state": "active",
+                    "priority": 101231.1231,
+                    "links": {
+                        "subject": "1231",
+                        "subject_set": "101
+                    }
+                }]
+            }
+
+### Retrieve a Single SetMemberSubject [GET]
++ Parameters
+  + include (optional, string) ... comma separated list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [SetMemberSubject][]
+
+### Edit a SetMemberSubject [PUT]
+A user with edit permissions for the project a SetMemberSubject's
+SubjectSet belongs to may edit the *state* and *priority* attributes.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "set_member_subjects": {
+                    "state": "inactive"
+                }
+            }
+
++ Response 200
+
+    [SetMemberSubject][]
+
+### Destroy a SetMemberSubject [DELETE]
+A user with edit permissions for the project a SetMemberSubject's
+Subject belongs to may destroy a SetMemberSubject resource. This
+removes the linked Subject form the linked SubjectSet
+
++ Response 204
+
+## SetMemberSubject Collection [/set_member_subjects{?subject_set_id,subject_id,page,page_size,include}]
+A collection of SetMemberSubject resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+SetMemberSubjects are returned as an array under *set_member_subjects*.
+
++ Model
+
+    + Body
+
+            {
+                links: {
+                    "set_member_subjects.subject": {
+                        "href": "/subjects/{set_member_subjects.subject}",
+                        "type": "subjects"
+                    },
+                    "set_member_subjects.subject_set": {
+                        "href": "/subject_sets/{set_member_subjects.subject_set}",
+                        "type": "subject_sets"
+                    }
+                },
+                "meta": {
+                    "set_member_subjects": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/set_member_subjects?page_size=2",
+                        "previous_href": "/set_member_subjects?page=14page_size=2",
+                        "next_href": "/set_member_subjects?page=2&page_size=2",
+                        "last_href": "/set_member_subjects?page=14&page_size=2"
+                    }
+                },
+                "set_member_subjects": [{
+                    "id": "1023",
+                    "created_at": "2014-03-20T00:15:47Z",
+                    "updated_at": "2013-09-30T10:20:32Z",
+                    "state": "active",
+                    "priority": 101231.1231,
+                    "links": {
+                        "subject": "1231",
+                        "subject_set": "101
+                    }
+                },{
+                    "id": "1024",
+                    "created_at": "2014-03-20T00:15:47Z",
+                    "updated_at": "2013-09-30T10:20:32Z",
+                    "state": "retired",
+                    "priority": 1231.1231,
+                    "links": {
+                        "subject": "1232",
+                        "subject_set": "101
+                    }
+                }]
+            }
+
+### List all SetMemberSubjects [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + subject_id (optional, integer) ... id of subject to see set_member_subjects for
+  + subject_set_id (optional, integer) ... id of subject_set to see set_member_subjects for
+  + include (optional, string) ... comma separated list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [SetMemberSubject Collection][]
+
+### Create a SetMemberSubject [POST]
+A SetMemberSubject may be created by a user that can see the Subject
+they wish to link to and can edit the project the SubjectSet belongs
+to.
+
+A SetMemberSubject requires links be provided to a Subject and a
+SubjectSet. Optionally, the create request may include a state and a
+priority. The state will be 'active' by default and the priority will
+be null by default.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "set_member_subjects: {
+                    "links": {
+                        "subject": "12031",
+                        "subject_set": "10"
+                    }
+                }
+            }
+
++ Response 201
+
+    [SetMemberSubject][]
+
+# Group CollectionRole
+Resources related to Roles for _Panoptes Collections_
+
+## CollectionRole [/collection_roles/{id}{?include}]
+A Collection Role resources contains an array of roles assigned to a user
+for a particular collection.
+
+It has the following attributes:
+
+- id
+- created_at
+- updated_at
+- roles
+
+*id*, *created_at*, and *updated_at* are set the by the API. Collection
+roles are visible to the collection owner and the user given roles.
+
+Collection roles may be:
+- `collaborator` - full access to edit or delete a collection
+- `viewer` - may view a private collection
+
++ Parameters
+  + id (required, integer) ... integer identifier of the collection role resource
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "collection_roles.owner": {
+                        "href": "/{collection_roles.owner.href}",
+                        "type": "owners"
+                    },
+                    "collection_roles.collection": {
+                        "href": "/collections/{collection_roles.collection}",
+                        "type": "collections"
+                    }
+                },
+                "collection_roles": [{
+                    "id": "942",
+                    "roles": ["collaborator"],
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "links": {
+                        "collection": "11",
+                        "owner": {
+                            "id": "4",
+                            "display_name": "Owner 4",
+                            "type": "user_groups",
+                            "href"=>"user_groups/4"
+                        }
+                    }
+                }]
+            }
+
+### Retrieve a single CollectionRole [GET]
++ Parameters
+  + include (optional, string) ... comma separate list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [CollectionRole][]
+
+### Edit a CollectionRole [PUT]
+A user with permissions to edit a collection may modify roles for other
+users in the collection. A user without edit permissions may not edit
+their own roles.
+
+Editing requires sending a full representation of the roles array.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "collection_roles": {
+                    "roles": ["viewer"]
+                }
+            }
+
++ Response 200
+
+    [CollectionRole][]
+
+## CollectionRole Collection [/collection_roles{?user_id,collection_id,page,page_size,sort,include}]
+A Collection of CollectionRole resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+CollectionRoles are returned as an array under *collection_roles*.
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "collection_roles.owner": {
+                        "href": "/{collection_roles.owner.href}",
+                        "type": "owners"
+                    },
+                    "collection_roles.collection": {
+                        "href": "/collections/{collection_roles.collection}",
+                        "type": "collections"
+                    }
+                },
+                "meta": {
+                    "collection_roles": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/collection_roles?page_size=2",
+                        "previous_href": "/collection_roles?page=14page_size=2",
+                        "next_href": "/collection_roles?page=2&page_size=2",
+                        "last_href": "/collection_roles?page=14&page_size=2"
+                    }
+                },
+                "collection_roles": [{
+                    "id": "942",
+                    "roles": ["collaborator"],
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "links": {
+                        "collection": "11",
+                        "owner": {
+                            "id": "4",
+                            "display_name": "Owner 4",
+                            "type": "user_groups",
+                            "href"=>"user_groups/4"
+                        }
+                    }
+                },{
+                "id": "949",
+                    "roles": ["viewer"],
+                    "created_at": "2014-08-20T06:23:12Z",
+                    "updated_at": "2014-09-21T08:22:22Z",
+                    "links": {
+                        "collection": "81",
+                        "owner": {
+                            "id": "1",
+                            "display_name": "Owner 1",
+                            "type": "users",
+                            "href"=>"users/1"
+                        }
+                    }
+                }]
+            }
+
+### List all CollectionRoles [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + sort (optional, string) ... field to sort by
+  + user_id (optional, integer) ... user_id to see roles for
+  + collection_id (optional, integer) ... collection_id to see roles for
+  + include (optional, string) ... comma separate list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [CollectionRole Collection][]
+
+### Create a CollectionRole [POST]
+Creating a Collection Role resource requires a link to a user and a
+collection. You may also include an array of roles.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "collection_roles": {
+                    "roles": ["collaborator"],
+                    "links": {
+                        "collection": "1",
+                        "user": "842"
+                    }
+                }
+            }
+
++ Response 201
+
+    [CollectionRole][]
+
+# Group CollectionPreference
+Resources related to setting preferences for _Panoptes Collections_
+
+## CollectionPreference [/collection_preferences/{id}{?include}]
+A Collection Preference resource captures a user's settings for a
+particular collection.
+
+It has the following attributes:
+
+- id
+- created_at
+- updated_at
+- preferences
+
+*id*, *created_at*, and *updated_at* are set the by the API. Collection
+ preferences are only visible to user they belong to.
+
++ Parameters
+  + id (required, integer) ... integer identifier of resource
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "collection_preferences.user": {
+                        "href": "/user/{collection_preferences.user}",
+                        "type": "users"
+                    },
+                    "collection_preferences.collection": {
+                        "href": "/collections/{collection_preferences.collection}",
+                        "type": "collections"
+                    }
+                },
+                "collection_preferences": [{
+                    "id": "942",
+                    "preferences": {
+                        "display": "grid"
+                    },
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "links": {
+                        "user" : "30",
+                        "collection": "11"
+                    }
+                }]
+            }
+
+### Retrieve a single CollectionPreference [GET]
++ Parameters
+  + include (optional, string) ... comma separated list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [CollectionPreference][]
+
+### Edit a CollectionPreference [PUT]
+Only the owning user may edit a Collection Preference resource. The
+preferences field may be edited.
+
+Editing the preferences field requires a full representation of the
+preferences object to be sent.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "collection_preferences": {
+                    "preferences": {
+                        "receive_updates": false,
+                    }
+                }
+            }
+
++ Response 200
+
+    [CollectionPreference][]
+
+## CollectionPreference Collection [/collection_preferences{?user_id,collection_id,page,page_size,sort,include}]
+A Collection of CollectionPreference resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+CollectionPreferences are returned as an array under *collection_preferences*.
+
++ Model
+
+            {
+                "links": {
+                    "collection_preferences.user": {
+                        "href": "/user/{collection_preferences.user}",
+                        "type": "users"
+                    },
+                    "collection_preferences.collection": {
+                        "href": "/collections/{collection_preferences.collection}",
+                        "type": "collections"
+                    }
+                },
+                "meta": {
+                    "collection_preferences": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/collection_preferences?page_size=2",
+                        "previous_href": "/collection_preferences?page=14page_size=2",
+                        "next_href": "/collection_preferences?page=2&page_size=2",
+                        "last_href": "/collection_preferences?page=14&page_size=2"
+                    }
+                },
+                "collection_preferences": [{
+                    "id": "942",
+                    "preferences": {
+                        "display": "grid"
+                    },
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "links": {
+                        "user" : "30",
+                        "collection": "11"
+                    }
+                },{
+                    "id": "949",
+                    "preferences": {
+                        "display": "grid"
+                    },
+                    "created_at": "2014-08-20T06:23:12Z",
+                    "updated_at": "2014-09-21T08:22:22Z",
+                    "links": {
+                        "user" : "33",
+                        "collection": "81"
+                    }
+                }]
+            }
+
+### List all CollectionPreferences [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + sort (optional, string) ... field to sort by
+  + user_id (optional, integer) ... user_id to see preferences for
+  + collection_id (optional, integer) ... collection_id to see preferences for
+  + include (optional, string) ... comma separated list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [CollectionPreference Collection][]
+
+### Create a CollectionPreference [POST]
+Creating a Collection Preference requires only a link to a
+collection. Optionally an object of settings for preferences may be included.
+
+Since a user can only create, read, or modify their own preferences
+the currently logged in user is always set as the linked user on
+creation.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "collection_preferences": {
+                    "preferences": {
+                        "display": "grid"
+                    },
+                    "links": {
+                        "collection": "1"
+                    }
+                }
+            }
+
++ Response 201
+
+    [CollectionPreference][]
+
+# Group Aggregation
+Resources related to setting preferences for _Panoptes Collections_
+
+## Aggregation [/aggregation/{id}{?include}]
+An Aggregation resource captures the results of the aggregation engine for
+the set of classifications for a particular workflow and subject.
+
+It has the following attributes:
+
+- id
+- created_at
+- updated_at
+- aggregation
+
+*id*, *created_at*, and *updated_at* are set the by the API. Aggregations are
+only visible to users with rights on the workflow's associated project.
+
++ Parameters
+  + id (required, integer) ... integer identifier of resource
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "aggregation.workflow": {
+                        "href": "/workflows/{aggregation.workflow}",
+                        "type": "workflows"
+                    },
+                    "aggregation.subject": {
+                        "href": "/subjects/{aggregation.subject}",
+                        "type": "subjects"
+                    }
+                },
+                "aggregations": [{
+                    "id": "5",
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "aggregation": {
+                        "mean": 1,
+                        "std": 1,
+                        "count": [1, 1, 1],
+                        "workflow_version": "1.1"
+                    },
+                    "links": {
+                        "workflow" : "3",
+                        "subject": "4"
+                    }
+                }]
+            }
+
+### Retrieve a single Aggregation [GET]
++ Parameters
+  + include (optional, string) ... comma separated list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Aggregation][]
+
+### Edit an Aggregation [PUT]
+Only a user with rights on the workflow's project may edit an Aggregation resource.
+The aggregation field may be edited.
+
+Editing the aggregation field requires a full representation of the
+aggregation object to be sent.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "aggregations": {
+                    "aggregation": {
+                        "mean": 1,
+                    }
+                }
+            }
+
++ Response 200
+
+    [Aggregation][]
+
+## Aggregation Collection [/aggregations{?workflow_id,subject_id,page,page_size,sort,include}]
+A Collection of Aggregation resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+Aggregations are returned as an array under *aggregations*.
+
++ Model
+
+            {
+                "links": {
+                    "aggregation.workflow": {
+                        "href": "/workflows/{aggregation.workflow}",
+                        "type": "workflows"
+                    },
+                    "aggregation.subject": {
+                        "href": "/subjects/{aggregation.subject}",
+                        "type": "subjects"
+                    }
+                },
+                "meta": {
+                    "collection_preferences": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 28,
+                        "include": [],
+                        "page_count": 14,
+                        "previous_page": 14,
+                        "next_page": 2,
+                        "first_href": "/collection_preferences?page_size=2",
+                        "previous_href": "/collection_preferences?page=14page_size=2",
+                        "next_href": "/collection_preferences?page=2&page_size=2",
+                        "last_href": "/collection_preferences?page=14&page_size=2"
+                    }
+                },
+                "aggregations": [{
+                    "id": "5",
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "aggregation": {
+                        "mean": 1,
+                        "std": 1,
+                        "count": [1, 1, 1],
+                        "workflow_version": "1.1"
+                    },
+                    "links": {
+                        "workflow" : "3",
+                        "subject": "4"
+                    }
+                }, {
+                    "id": "6",
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:23:22Z",
+                    "aggregation": {
+                        "mean": 2,
+                        "std": 3,
+                        "count": [2, 1, 1],
+                        "workflow_version": "1.2"
+                    },
+                    "links": {
+                        "workflow" : "4",
+                        "subject": "3"
+                    }
+                }]
+            }
+
+### List all Aggregations [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + sort (optional, string) ... field to sort by
+  + workflow_id (optional, integer) ... workflow to see aggregations for
+  + subject_id (optional, integer) ... subject_id to see aggregations for
+  + include (optional, string) ... comma separated list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [Aggregation Collection][]
+
+### Create a Aggregation [POST]
+Creating an Aggregation requires an aggregation hash with the _workflow_version_
+set. Please note, the _workflow_version_ should be the value returned from the
+specific aggregation workflow's representation. The workflow and subject links
+must be provided as well.
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
+    + Body
+
+            {
+                "aggregations": {
+                    "aggregation": {
+                        "mean": 1,
+                        "std": 1,
+                        "count": [1, 1, 1],
+                        "workflow_version": "1.1"
+                    },
+                    "links": {
+                        "workflow" : "3",
+                        "subject": "4"
+                    }
+                }
+            }
+
++ Response 201
+
+    [Aggregation][]
+
+# Group SubjectWorkflowStatus
+Resources related to setting preferences for _Panoptes Subject Workflow Status_
+
+## SubjectWorkflowStatus [/SubjectWorkflowStatus/{id}{?include}]
+An SubjectWorkflowStatus resource collates the status of a subject in a workflow.
+This status includes the classificaiton count and the retirement state and reason.
+
+It has the following attributes:
+
+- id
+- classifications_count
+- retired_at
+- retirement_reason,
+- updated_at
+- created_at
+
+*id*, *created_at*, and *updated_at* are set the by the API. SubjectWorkflowStatuses are
+only visible to users with rights on the workflow's associated project.
+
++ Parameters
+  + id (required, integer) ... integer identifier of resource
+
++ Model
+
+    + Body
+
+            {
+                "links": {
+                    "SubjectWorkflowStatuses.workflow": {
+                        "href": "/workflows/{subject_workflow_statuses.workflow}",
+                        "type": "workflows"
+                    },
+                    "SubjectWorkflowStatuses.subject": {
+                        "href": "/subjects/{subject_workflow_statuses.subject}",
+                        "type": "subjects"
+                    }
+                },
+                "subject_workflow_statuses": [{
+                    "id": "1",
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "classifications_count": 10,
+                    "retired_at": "2014-04-21T08:22:22Z",
+                    "retirement_reason": "consensus",
+                    "links": {
+                        "workflow" : "3",
+                        "subject": "4"
+                    }
+                }]
+            }
+
+### Retrieve a single SubjectWorkflowStatus [GET]
++ Parameters
+  + include (optional, string) ... comma separated list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [SubjectWorkflowStatus][]
+
+## SubjectWorkflowStatus Collection [/SubjectWorkflowStatuses{?workflow_id,subject_id,page,page_size,sort,include}]
+A Collection of SubjectWorkflowStatus resources.
+
+All collections add a meta attribute hash containing paging
+information.
+
+SubjectWorkflowStatuses are returned as an array under *subject_workflow_statuses*.
+
++ Model
+
+            {
+                "links": {
+                    "SubjectWorkflowStatuses.workflow": {
+                        "href": "/workflows/{subject_workflow_statuses.workflow}",
+                        "type": "workflows"
+                    },
+                    "SubjectWorkflowStatus.subject": {
+                        "href": "/subjects/{subject_workflow_statuses.subject}",
+                        "type": "subjects"
+                    }
+                },
+                "meta": {
+                    "collection_preferences": {
+                        "page": 1,
+                        "page_size": 2,
+                        "count": 2,
+                        "include": [],
+                        "page_count": 1,
+                        "previous_page": 0,
+                        "next_page": 0,
+                        "first_href": "/subject_workflow_statuses?page_size=2",
+                        "previous_href": "",
+                        "next_href": "",
+                        "last_href": "/subject_workflow_statuses?page=2&page_size=2"
+                    }
+                },
+                "subject_workflow_statuses": [{
+                    "id": "1",
+                    "created_at": "2014-03-20T06:23:12Z",
+                    "updated_at": "2014-04-21T08:22:22Z",
+                    "classifications_count": 10,
+                    "retired_at": "2014-04-21T08:22:22Z",
+                    "retirement_reason": "consensus",
+                    "links": {
+                        "workflow" : "3",
+                        "subject": "4"
+                    }
+                },{
+                    "id": "2",
+                    "created_at": "2014-03-21T06:23:12Z",
+                    "updated_at": "2014-04-22T08:22:22Z",
+                    "classifications_count": 2,
+                    "retired_at": "2014-04-22T08:22:22Z",
+                    "retirement_reason": "blank",
+                    "links": {
+                        "workflow" : "3",
+                        "subject": "5"
+                    }
+                }]
+            }
+
+### List all SubjectWorkflowStatuses [GET]
++ Parameters
+  + page (optional, integer) ... the index of the page to retrieve default is 1
+  + page_size (optional, integer) ... number of items to include on a page default is 20
+  + workflow_id (optional, integer) ... workflow to see SubjectWorkflowStatuses for
+  + subject_id (optional, integer) ... subject_id to see SubjectWorkflowStatuses for
+  + include (optional, string) ... comma separated list of linked resources to load
+
++ Request
+
+    + Headers
+
+            Accept: application/vnd.api+json; version=1
+            Content-Type: application/json
+
++ Response 200
+
+    [SubjectWorkflowStatus Collection][]

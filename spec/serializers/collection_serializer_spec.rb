@@ -1,0 +1,116 @@
+require 'spec_helper'
+
+describe CollectionSerializer do
+  let(:collection) { create(:collection_with_subjects) }
+
+  it_should_behave_like "a panoptes restpack serializer", "test_owner_include" do
+    let(:resource) { collection }
+    let(:includes) { %i(collection_roles subjects projects) }
+    let(:preloads) do
+      [
+        [ owner: { identity_membership: :user } ],
+        :collection_roles,
+        :subjects,
+        :projects,
+        default_subject: :locations
+      ]
+    end
+  end
+
+  it_should_behave_like "a filter has many serializer" do
+    let(:resource) { create(:collection_with_subjects) }
+    let(:relation) { :subjects }
+    let(:next_page_resource) do
+      create(:collection, subjects: resource.subjects)
+    end
+  end
+
+  describe 'collection roles include' do
+    it 'only includes roles for the collection resource type' do
+      conflicting_resource = create(:project, id: collection.id)
+      result = described_class.page({ include: 'collection_roles' }, Collection.where(id: collection.id), {})
+      collection_links = result.dig(:collections, 0, :links)
+      collection_role_ids = collection.collection_roles.pluck(:id).map(&:to_s)
+      linked_role_ids = result.dig(:linked, :collection_roles).pluck(:id)
+
+      expect(collection_links[:collection_roles]).to contain_exactly(*collection_role_ids)
+      expect(collection_links).not_to have_key('collection_roles')
+      expect(linked_role_ids).to contain_exactly(*collection_role_ids)
+    end
+  end
+
+  describe 'sorting' do
+    before do
+      collection
+      first_by_name
+    end
+
+    let(:first_by_name) do
+      create(:collection, display_name: "Aardvarks")
+    end
+    let(:serialized_page) do
+      described_class.page({ sort: 'display_name' }, Collection.all, {})
+    end
+
+    describe 'by display_name' do
+      it 'respects the sort order query param' do
+        results = serialized_page[:collections].pluck(:display_name)
+        expected = [first_by_name.display_name, collection.display_name]
+        expect(results).to eq(expected)
+      end
+    end
+
+    describe 'by updated_at' do
+      before do
+        collection.update!(updated_at: 2.days.ago)
+        first_by_name.update!(updated_at: 1.day.ago)
+      end
+
+      let(:serialized_page) do
+        described_class.page({ sort: '-updated_at' }, Collection.all, {})
+      end
+
+      it 'respects the sort order query param properly' do
+        results = serialized_page[:collections].map { |r| r[:id].to_i }
+        expected = [first_by_name.id, collection.id]
+        expect(results).to eq(expected)
+      end
+    end
+
+    describe 'by created_at properly' do
+      before do
+        collection.update!(created_at: 2.days.ago)
+        first_by_name.update!(created_at: 1.day.ago)
+      end
+
+      let(:serialized_page) do
+        described_class.page({ sort: '-created_at' }, Collection.all, {})
+      end
+
+      it 'respects the sort order query param' do
+        results = serialized_page[:collections].map { |r| r[:id].to_i }
+        expected = [first_by_name.id, collection.id]
+        expect(results).to eq(expected)
+      end
+    end
+  end
+
+  describe "default subject location" do
+    let(:subject_with_media) { create(:subject, :with_mediums, num_media: 1) }
+    let(:collection) do
+      create(:collection) do |col|
+        col.subjects = [ subject_with_media ]
+        col.default_subject_id = col.subjects.first.id
+      end
+    end
+    let(:serializer_result) do
+      CollectionSerializer.single({}, Collection.where(id: collection.id), {})
+    end
+    let(:media_location) { subject_with_media.ordered_locations.first }
+
+    it "includes the default subject's url" do
+      default_subject_src = serializer_result[:default_subject_src]
+      expect(default_subject_src).to eq(media_location.get_url)
+    end
+  end
+end

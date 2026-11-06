@@ -1,0 +1,50 @@
+---
+title: API Reference
+
+language_tabs: # must be one of https://git.io/vQNgJ
+  - http
+  - python
+  - javascript
+  - ruby
+
+toc_footers:
+  - <a href='https://github.com/zooniverse/panoptes/tree/master/docs/source/'>Modify documentation</a>
+  - <a href='https://github.com/tripit/slate'>Documentation Powered by Slate</a>
+
+includes:
+  - authentication
+  - authentication_routes
+  - json_api
+  - headers
+  - aggregations
+  - classifications
+  - collection_preferences
+  - collection_roles
+  - collections
+  - field_guides
+  - memberships
+  - organizations
+  - project_preferences
+  - project_roles
+  - projects
+  - subject_set_imports
+  - set_member_subjects
+  - subject_sets
+  - subject_workflow_statuses
+  - subjects
+  - translations
+  - tutorials
+  - user_groups
+  - users
+  - workflows
+  - media_resources
+  - inaturalist
+
+search: true
+---
+
+# Introduction
+
+Panoptes API is a *crowdsourcing system* based on serving _subjects_,
+images or other media, to _volunteers_ and asking them to _classify_
+the _subject_ based on a defined _workflow_ for the _subject_ type.

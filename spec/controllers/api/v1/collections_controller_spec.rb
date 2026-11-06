@@ -1,0 +1,385 @@
+# frozen_string_literal: true
+
+require 'spec_helper'
+
+describe Api::V1::CollectionsController, type: :controller do
+  let(:owner) { create(:user) }
+  let!(:collections) { create_list :collection_with_subjects, 2, owner: owner }
+  let(:collection) { collections.first }
+  let(:project) { collection.projects.sample }
+  let(:api_resource_name) { 'collections' }
+
+  let(:api_resource_attributes) { %w[id name display_name created_at updated_at favorite private description] }
+  let(:api_resource_links) { %w[collections.projects collections.owner collections.collection_roles collections.subjects] }
+
+  let(:scopes) { %w[public collection] }
+  let(:authorized_user) { owner }
+  let(:resource_class) { Collection }
+
+  before do
+    default_request scopes: scopes
+  end
+
+  describe '#index' do
+    let(:filterable_resources) { collections }
+    let(:expected_filtered_ids) { [filterable_resources.first.id.to_s] }
+    let!(:private_resource) do
+      create :collection_with_subjects, private: true
+    end
+    let(:resource) { collection }
+    let(:n_visible) { 2 }
+    let(:deactivated_resource) { create(:collection, activated_state: :inactive) }
+
+    it_behaves_like 'is indexable'
+    it_behaves_like 'it has custom owner links', 'display_name'
+    it_behaves_like 'it only lists active resources'
+    it_behaves_like 'filter by display_name'
+    it_behaves_like 'has many filterable', :subjects
+
+    describe 'filtering' do
+      let(:owner_resources) { collections }
+      let(:collab_collection) { create(:collection) }
+      let(:collab_resource) { collab_collection }
+      let(:viewer_resource) { private_resource }
+
+      it_behaves_like 'filters by owner'
+      it_behaves_like 'filters by current user roles'
+
+      describe 'project_ids' do
+        let(:project_ids) { collections.map(&:project_ids).flatten }
+        let(:expected_filtered_ids) { collections.map(&:id).map(&:to_s) }
+
+        it_behaves_like 'belongs to many filterable', :projects do
+          let(:filter_ids) { project_ids.join(',') }
+        end
+
+        context 'single project_ids' do
+          let(:project_ids) { collections.first.project_ids }
+          let(:expected_filtered_ids) { [collections.first.id.to_s] }
+
+          it_behaves_like 'belongs to many filterable', :projects do
+            let(:filter_ids) { project_ids.join(',') }
+          end
+        end
+
+        context 'on singular resource' do
+          let(:expected_filtered_ids) { [collections.first.id.to_s] }
+
+          it_behaves_like 'has many filterable', :projects do
+            let(:filter_ids) { collections.first.project_ids.first }
+          end
+        end
+      end
+
+      describe 'by favorite' do
+        let!(:favorite_col) { create(:collection, favorite: true) }
+
+        it 'only returns the favorite collection' do
+          get :index, params: { favorite: true }
+          expect(json_response[api_resource_name].map { |r| r['id'] }).to match_array([favorite_col.id.to_s])
+        end
+      end
+
+      describe 'by min_subjects' do
+        before do
+          collections.first.update_column(:subjects_count, 1)
+          collections.second.update_column(:subjects_count, 3)
+          private_resource.update_column(:subjects_count, 4)
+        end
+
+        it 'only returns visible collections with at least the requested subject count' do
+          get :index, params: { min_subjects: 3 }
+
+          expect(json_response[api_resource_name].map { |r| r['id'] }).to match_array([collections.second.id.to_s])
+        end
+
+        it 'does not filter collections when min_subjects is blank' do
+          get :index, params: { min_subjects: '' }
+
+          expect(json_response[api_resource_name].map { |r| r['id'] }).to match_array(collections.map { |col| col.id.to_s })
+        end
+
+        it 'does not filter collections when min_subjects is not provided' do
+          get :index
+
+          expect(json_response[api_resource_name].map { |r| r['id'] }).to match_array(collections.map { |col| col.id.to_s })
+        end
+      end
+    end
+  end
+
+  describe '#show' do
+    let(:resource) { collection }
+
+    it_behaves_like 'is showable'
+
+    it 'scopes included collection roles to collections' do
+      conflicting_resource = create(:project, id: collection.id)
+      get :show, params: { id: collection.id, include: 'collection_roles' }
+
+      included_roles = json_response['linked']['collection_roles']
+      included_role_ids = included_roles.map { |role| role['id'] }
+
+      expect(included_role_ids).to include(collection.collection_roles.first.id.to_s)
+      expect(included_role_ids).not_to include(conflicting_resource.access_control_lists.first.id.to_s)
+    end
+  end
+
+  describe '#update' do
+    let(:subjects) { create_list(:subject, 4) }
+    let(:resource) { collection }
+    let(:resource_id) { :collection_id }
+    let(:test_attr) { :display_name }
+    let(:test_attr_value) { 'Tested Collection' }
+    let(:test_relation) { :subjects }
+    let(:test_relation_ids) { subjects.map(&:id) }
+    let(:update_params) do
+      {
+        collections: {
+          display_name: 'Tested Collection',
+          description: 'Super tested collection of subjects, very good very nice',
+          private: false,
+          links: {
+            subjects: subjects.map(&:id).map(&:to_s)
+          }
+        }
+      }
+    end
+
+    it_behaves_like 'is updatable'
+    it_behaves_like 'has updatable links'
+    it_behaves_like 'supports update_links'
+
+    context 'when update_params contains links' do
+      before do
+        default_request scopes: scopes, user_id: authorized_user.id
+      end
+
+      it 'updates the subjects_count when links contain subjects' do
+        put :update, params: update_params.merge(id: resource.id)
+        expect(collection.reload.subjects_count).to eq(subjects.size)
+      end
+
+      it 'updates the default_subject_id when links contain default_subject' do
+        links = update_params[:collections][:links]
+        links[:default_subject] = subjects.first.id.to_s
+        update_params[:collections][:links] = links
+        put :update, params: update_params.merge(id: resource.id)
+        expect(collection.reload.default_subject_id).to eq(subjects.first.id)
+      end
+    end
+
+    it 'updates subjects_count on update_links' do
+      new_subject = create(:subject)
+      default_request scopes: scopes, user_id: authorized_user.id
+      params = {
+        link_relation: 'subjects',
+        collection_id: resource.id,
+        subjects: [new_subject.id]
+      }
+      expect { post :update_links, params: params }.to change { resource.reload.subjects_count }.by(params[:subjects].size)
+    end
+
+    context 'when the subject is already in a collection' do
+      let!(:test_relation_ids) { Array.wrap(collection.subjects.first.id) }
+      let(:params) do
+        {
+          link_relation: test_relation.to_s,
+          test_relation => test_relation_ids,
+          resource_id => resource.id
+        }
+      end
+
+      before do
+        default_request scopes: scopes, user_id: authorized_user.id
+      end
+
+      it 'returns a useful error message' do
+        post :update_links, params: params
+        aggregate_failures 'dup link ids' do
+          expect(response).to have_http_status(:bad_request)
+          error_body = 'Validation failed: Subject is already in the collection'
+          expect(response.body).to eq(json_error_message(error_body))
+        end
+      end
+
+      it 'handles duplicate index violations gracefully' do
+        msg = 'ERROR: duplicate key value violates unique constraint'
+        error = ActiveRecord::RecordNotUnique.new(msg)
+        allow(subject).to receive(:add_relation).and_raise(error)
+        post :update_links, params: params
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+
+    context 'when favorite collection has existing subjects' do
+      let(:additional_subject) { create(:subject) }
+      let(:params) do
+        {
+          link_relation: 'subjects',
+          subjects: [additional_subject.id],
+          collection_id: collection.id
+        }
+      end
+
+      before do
+        default_request scopes: scopes, user_id: authorized_user.id
+
+        collection.favorite = true
+        collection.save!
+      end
+
+      it 'allows another subject to be added' do
+        post :update_links, params: params
+        expect(response).to have_http_status(:ok)
+      end
+    end
+  end
+
+  describe '#create' do
+    let(:test_attr) { :name }
+    let(:test_attr_value) { 'test__collection' }
+    let(:create_links) { { subjects: [], projects: [project.id.to_s] } }
+    let(:create_params) do
+      {
+        collections: {
+          name: 'test__collection',
+          display_name: 'Fancy name',
+          private: false,
+          description: 'Such a good collection, the best, amazing',
+          links: create_links
+        }
+      }
+    end
+
+    it_behaves_like 'is creatable'
+
+    context 'with singular project link object' do
+      let(:create_links) { { project: project.id } }
+
+      before do
+        default_request scopes: scopes, user_id: authorized_user.id
+        post :create, params: create_params
+      end
+
+      it 'returns created', :aggregate_failures do
+        expect(response).to have_http_status(:created)
+        created_links = created_instance(api_resource_name)['links']
+        expect(created_links).to have_key('projects')
+      end
+
+      context 'when passing inconsistent project links' do
+        let(:create_links) { { project: project.id, projects: [1, 2] } }
+
+        it 'returns an error' do
+          msg = 'Error: project_ids and project link keys must not be set together'
+          expect(response.body).to eq(json_error_message(msg))
+        end
+      end
+    end
+
+    describe 'validation' do
+      let(:favorite_params) do
+        {
+          collections: {
+            name: 'favorite_collection',
+            display_name: 'Fancy name',
+            private: false,
+            favorite: true,
+            description: 'Such a good collection, the best, amazing',
+            links: create_links
+          }
+        }
+      end
+
+      before do
+        default_request scopes: scopes, user_id: authorized_user.id
+      end
+
+      context 'when favorite collection does not exist for given user/project' do
+        it 'successfully creates a favorite collection' do
+          post :create, params: favorite_params
+          expect(response).to have_http_status(:created)
+        end
+      end
+
+      context 'when favorite collection already exists for given user/project' do
+        before { create(:collection, favorite: true, project_ids: [project.id], owner: owner) }
+
+        it 'returns a bad request error trying to create a favorite collection' do
+          post :create, params: favorite_params
+          expect(response).to have_http_status(:bad_request)
+        end
+      end
+
+      context 'when a non-favorite collection exists for a given user/project' do
+        before { create(:collection, favorite: false, project_ids: [project.id], owner: owner) }
+
+        it 'successfully creates a favorite collection' do
+          post :create, params: favorite_params
+          expect(response).to have_http_status(:created)
+        end
+      end
+
+      context 'when a favorite exists, but for a separate project' do
+        before { create(:collection, favorite: true, project_ids: [project.id + 1], owner: owner) }
+
+        it 'successfully creates a favorite collection' do
+          post :create, params: favorite_params
+          expect(response).to have_http_status(:created)
+        end
+      end
+    end
+  end
+
+  describe '#destroy' do
+    let(:resource) { collection }
+
+    it_behaves_like 'is destructable'
+  end
+
+  describe '#destroy_links' do
+    context 'subjects_count' do
+      before do
+        default_request scopes: scopes, user_id: authorized_user.id
+      end
+
+      it 'decrements the subjects_count' do
+        params = { collection_id: collection.id,
+                   link_relation: :subjects,
+                   link_ids: collection.subjects.first.id.to_s }
+        expect { delete :destroy_links, params: params }.to change { collection.reload.subjects_count }.by(-1)
+      end
+    end
+
+    context 'removing the default subject from the collection' do
+      let(:default_subject) { collection.subjects.first }
+
+      def delete_default(ids)
+        delete :destroy_links,
+               params: {
+                 collection_id: collection.id,
+                 link_relation: :subjects,
+                 link_ids: ids
+               }
+      end
+
+      before do
+        default_request scopes: scopes, user_id: authorized_user.id
+        collection.update(default_subject: default_subject)
+      end
+
+      context 'nulls the default subject relation' do
+        it 'when there is a single subject given' do
+          delete_default(default_subject.id.to_s)
+          expect(collection.reload.default_subject).to be_nil
+        end
+
+        it 'when there is an array of subjects given' do
+          delete_default(collection.subjects.pluck(:id).join(','))
+          expect(collection.reload.default_subject).to be_nil
+        end
+      end
+    end
+  end
+end
